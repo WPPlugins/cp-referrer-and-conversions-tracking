@@ -97,10 +97,10 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
  }
 </script>
 
-<h1><?php _e('Conversions','cp-referrer-tracking'); ?></h1>
+<h1><?php _e('Conversions','cp-referrer-and-conversions-tracking'); ?></h1>
 
 <div class="ahb-buttons-container">
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-tracking'); ?></a>
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
 	<div class="clear"></div>
 </div>
 
@@ -108,12 +108,12 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
 	<div class="ahb-section">
       <form action="admin.php" method="get">
         <input type="hidden" name="page" value="<?php echo $this->menu_parameter; ?>_conversions" />
-		<nobr><label><?php _e('Search for','cp-referrer-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('From','cp-referrer-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr(@$_GET["dfrom"]); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('To','cp-referrer-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr(@$_GET["dto"]); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php _e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
+		<nobr><label><?php _e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr(@$_GET["dfrom"]); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php _e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr(@$_GET["dto"]); ?>" >&nbsp;&nbsp;</nobr>
        <div style="float:right">
 		<nobr>
-            <input type="submit" name="ds" value="<?php _e('Filter','cp-referrer-tracking'); ?>" class="button-primary button" style="">
+            <input type="submit" name="ds" value="<?php _e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="">
 		</nobr>
        </div>
       </form>
@@ -151,12 +151,12 @@ echo paginate_links(  array(
 	<thead>
 	<tr>
       <th width="10"><input type="checkbox" name="cpcontrolck" id="cpcontrolck" value="" onclick="cp_markall();"></th>
-      <th width="30"><?php _e('IP','cp-referrer-tracking'); ?></th>
-	  <th style="text-align:left" width="130"><?php _e('Time','cp-referrer-tracking'); ?></th>
-      <th style="text-align:left"><?php _e('Conversion','cp-referrer-tracking'); ?></th>
-      <th style="text-align:left"><?php _e('Details','cp-referrer-tracking'); ?></th>
-	  <th style="text-align:left"><?php _e('Referrer','cp-referrer-tracking'); ?></th>
-	  <th  class="cpnopr"><?php _e('Options','cp-referrer-tracking'); ?></th>
+      <th width="30"><?php _e('IP','cp-referrer-and-conversions-tracking'); ?></th>
+	  <th style="text-align:left" width="130"><?php _e('Time','cp-referrer-and-conversions-tracking'); ?></th>
+      <th style="text-align:left"><?php _e('Conversion','cp-referrer-and-conversions-tracking'); ?></th>
+      <th style="text-align:left"><?php _e('Details','cp-referrer-and-conversions-tracking'); ?></th>
+	  <th style="text-align:left"><?php _e('Referrer','cp-referrer-and-conversions-tracking'); ?></th>
+	  <th  class="cpnopr"><?php _e('Options','cp-referrer-and-conversions-tracking'); ?></th>
 	</tr>
 	</thead>
 	<tbody id="the-list">
@@ -178,7 +178,7 @@ echo paginate_links(  array(
                        echo '</td>';
                    }
                    else
-                       echo '<td style="color: #cccccc">'.__('N/A - unable to find the referrer source','cp-referrer-tracking').'</td>';
+                       echo '<td style="color: #cccccc">'.__('N/A - unable to find the referrer source','cp-referrer-and-conversions-tracking').'</td>';
                    ?>
 		<td class="cpnopr" style="text-align:center;">
 		  <input class="button" type="button" name="caldelete_<?php echo $events[$i]->id; ?>" value="Delete" onclick="cp_deleteMessageItem('<?php echo $events[$i]->id; ?>');" />
@@ -193,7 +193,7 @@ echo paginate_links(  array(
 
 <div class="ahb-buttons-container">
     <input type="button" value="Print" class="button button-primary" onclick="do_dexapp_print();" />
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-tracking'); ?></a>
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
 	<div class="clear"></div>
 </div>
 

@@ -22,7 +22,7 @@ The main features are:
 
 * Allow to create different referral links for different marketing campaigns (referral sources)
 
-* Records the original referrer of and the latest referrer of the conversions
+* Records the original referrer and the latest referrer of the conversions
 
 * Includes integration with multiple plugins for tracking its conversions
 
@@ -72,6 +72,19 @@ The "Add Ons" menu already includes several conversion add-ons for different plu
  * Polls
  * Payment forms 
  
+Includes conversion tracking for the following plugins:
+
+ * [WooCommerce](https://wordpress.org/plugins/woocommerce/)
+ * [Contact Form 7](https://wordpress.org/plugins/contact-form-7/)
+ * [Contact Form to Email](https://wordpress.org/plugins/contact-form-to-email/)
+ * [Appointment Hour Booking](https://wordpress.org/plugins/appointment-hour-booking/)
+ * [Appointment Booking Calendar](https://wordpress.org/plugins/appointment-booking-calendar/)
+ * [Booking Calendar Contact Form](https://wordpress.org/plugins/booking-calendar-contact-form/)
+ * [Calculated Fields Form](https://wordpress.org/plugins/calculated-fields-form/)
+ * [Contact Form with PayPal](https://wordpress.org/plugins/cp-contact-form-with-paypal/)
+ * [CP Polls](https://wordpress.org/plugins/cp-polls/)
+ * [WP Time Slots Booking Form](https://wordpress.org/plugins/wp-time-slots-booking-form/)
+
 New add-ons will be added soon.
 
 For developers: If you need to track a custom conversion writing the please see in the FAQ the supported hooks.
@@ -82,7 +95,7 @@ For developers: If you need to track a custom conversion writing the please see 
 To install **CP Referrer and Conversion Tracking**, follow these steps:
 
 1.	Download and unzip the CP Referrer and Conversion Tracking plugin
-2.	Upload the entire cp-referrer-tracking/ directory to the /wp-content/plugins/ directory
+2.	Upload the entire cp-referrer-and-conversions-tracking/ directory to the /wp-content/plugins/ directory
 3.	Activate the CP Referrer and Conversion Tracking plugin through the Plugins menu in WordPress
 4.	Configure the settings at the administration menu >> Settings >> CP Referrer Tracking
  
@@ -121,11 +134,30 @@ For customizing the info in the conversions list:
 = 1.01.01 =
 * First version published
 
-= 1.01.02 =
-* Additional sanitization applied
+= 1.01.03 =
+* Conversion tracking for WooCommerce orders
+* Conversion tracking for Contact Form 7 submissions
+* Auto-detection added for Contact Form to Email
+* Auto-detection added for Appointment Hour Booking
+* Auto-detection added for Appointment Booking Calendar
+* Auto-detection added for Booking Calendar Contact Form
+* Auto-detection added for Calculated Fields Form
+* Auto-detection added for Contact Form with PayPal
+* Auto-detection added for CP Polls
+* Auto-detection added for WP Time Slots Booking Form
  
 == Upgrade Notice ==
  
-= 1.01.02 =
-* Additional sanitization applied
+= 1.01.03 =
+* Conversion tracking for WooCommerce orders
+* Conversion tracking for Contact Form 7 submissions
+* Auto-detection added for Contact Form to Email
+* Auto-detection added for Appointment Hour Booking
+* Auto-detection added for Appointment Booking Calendar
+* Auto-detection added for Booking Calendar Contact Form
+* Auto-detection added for Calculated Fields Form
+* Auto-detection added for Contact Form with PayPal
+* Auto-detection added for CP Polls
+* Auto-detection added for WP Time Slots Booking Form
+
  

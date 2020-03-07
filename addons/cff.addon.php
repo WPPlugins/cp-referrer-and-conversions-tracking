@@ -27,8 +27,10 @@ if( !class_exists( 'CPREFTRACK_CalculatedFieldsForm' ) )
 
         function __construct()
         {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=calculated-fields-form&amp;\">Calculated Fields Form</a> plugin", 'cp-referrer-tracking' );
+			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=calculated-fields-form&amp;\">Calculated Fields Form</a> plugin", 'cp-referrer-and-conversions-tracking' );
             // Check if the plugin is active
+            
+            //$this->check_active();
 
 			if( !$this->addon_is_active() ) return;
 

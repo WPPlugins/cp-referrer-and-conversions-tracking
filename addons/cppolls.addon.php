@@ -27,8 +27,10 @@ if( !class_exists( 'CPREFTRACK_CPPollsForm' ) )
 
         function __construct()
         {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;\">CP Polls</a> plugin", 'cp-referrer-tracking' );
+			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;\">CP Polls</a> plugin", 'cp-referrer-and-conversions-tracking' );
             // Check if the plugin is active
+            
+            add_action( 'init', array( &$this, 'check_active' ), 10, 1 );
 
 			if( !$this->addon_is_active() ) return;
 
@@ -54,12 +56,23 @@ if( !class_exists( 'CPREFTRACK_CPPollsForm' ) )
 		/************************ PUBLIC METHODS  *****************************/
 
 
+        public function check_active()
+        {
+            global $cp_pollsnv_plugin;
+            if (is_object($cp_pollsnv_plugin) && !$this->addon_is_active())
+            {
+                global $cpreftrack_addons_active_list;
+                $cpreftrack_addons_active_list[] = $this->get_addon_id();
+                update_option( 'cpreftrack_addons_active_list', $cpreftrack_addons_active_list );
+            }
+        }
+        
+        
 		public function register_referrer(&$params)
 		{
             $referrer = apply_filters( 'cpreftrack_referrer', '' );
             $params["referrer_url"] = $referrer;
             $params["referrer_url_latest"] = sanitize_text_field($_COOKIE['cprreftracklatest']);
-
         }
 
 
@@ -74,7 +87,7 @@ if( !class_exists( 'CPREFTRACK_CPPollsForm' ) )
             <div class="card h-100" style="background-color: #ffdddd">
                 <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo $this->name; ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
 
-                <input class="button mt-2" type="button" name="calreport_<?php echo $item->id; ?>" value="<?php _e('Install CP Polls plugin','cp-referrer-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;';" />
+                <input class="button mt-2" type="button" name="calreport_<?php echo $item->id; ?>" value="<?php _e('Install CP Polls plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;';" />
             </div>
 <?php
                 }

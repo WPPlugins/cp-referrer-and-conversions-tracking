@@ -27,8 +27,10 @@ if( !class_exists( 'CPREFTRACK_CFTEForm' ) )
 
         function __construct()
         {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;\">Contact Form to Email</a> plugin", 'cp-referrer-tracking' );
+			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;\">Contact Form to Email</a> plugin", 'cp-referrer-and-conversions-tracking' );
             // Check if the plugin is active
+            
+            add_action( 'init', array( &$this, 'check_active' ), 10, 1 );
 
 			if( !$this->addon_is_active() ) return;
 
@@ -54,6 +56,18 @@ if( !class_exists( 'CPREFTRACK_CFTEForm' ) )
 		/************************ PUBLIC METHODS  *****************************/
 
 
+        public function check_active()
+        {
+            global $cp_cfte_plugin;
+            if (is_object($cp_cfte_plugin) && !$this->addon_is_active())
+            {
+                global $cpreftrack_addons_active_list;
+                $cpreftrack_addons_active_list[] = $this->get_addon_id();
+                update_option( 'cpreftrack_addons_active_list', $cpreftrack_addons_active_list );
+            }
+        }
+        
+
         public function get_addon_settings()
         {
             global $cp_cfte_plugin;
@@ -65,7 +79,7 @@ if( !class_exists( 'CPREFTRACK_CFTEForm' ) )
             <div class="card h-100" style="background-color: #ffdddd">
                 <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo $this->name; ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
 
-                <input class="button mt-2" type="button" name="calreport_<?php echo $item->id; ?>" value="<?php _e('Install Contact Form to Email plugin','cp-referrer-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;';" />
+                <input class="button mt-2" type="button" name="calreport_<?php echo $item->id; ?>" value="<?php _e('Install Contact Form to Email plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;';" />
             </div>
 <?php
                 }

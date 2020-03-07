@@ -51,13 +51,13 @@ else
     word-wrap: break-word;
 }
 </style>
-<h1><?php _e('CP Referrer Tracking - General Settings','cp-referrer-tracking'); ?></h1>
+<h1><?php _e('CP Referrer Tracking - General Settings','cp-referrer-and-conversions-tracking'); ?></h1>
 
 <?php
     if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".$message."</h2></div>";
 ?>
 <nav class="nav-tab-wrapper ahb-tab-wrapper">
-	<a href="javascript:void(0);" class="nav-tab<?php if ($gotab == '') echo ' nav-tab-active'; ?>" data-tab="1"><?php _e('General Settings','cp-referrer-tracking'); ?></a>	
+	<a href="javascript:void(0);" class="nav-tab<?php if ($gotab == '') echo ' nav-tab-active'; ?>" data-tab="1"><?php _e('General Settings','cp-referrer-and-conversions-tracking'); ?></a>	
 </nav>
 
 <!-- TAB 1 -->
@@ -69,14 +69,14 @@ else
      <input name="gotab" type="hidden" value="" />
      <table class="form-table">
         <tr valign="top">
-        <td scope="row" colspan="2"><strong><?php _e('Enable Referrer Tracking?','cp-referrer-tracking'); ?></strong>
+        <td scope="row" colspan="2"><strong><?php _e('Enable Referrer Tracking?','cp-referrer-and-conversions-tracking'); ?></strong>
           <?php $option = get_option('cp_cpreftrack_rep_enable', ''); ?>
           <select name="cp_cpreftrack_rep_enable">
-           <option value="no"<?php if ($option == 'no' || $option == '') echo ' selected'; ?>><?php _e('No','cp-referrer-tracking'); ?></option>
-           <option value=""<?php if ($option == '') echo ' selected'; ?>><?php _e('Yes','cp-referrer-tracking'); ?></option>
+           <option value="no"<?php if ($option == 'no' || $option == '') echo ' selected'; ?>><?php _e('No','cp-referrer-and-conversions-tracking'); ?></option>
+           <option value=""<?php if ($option == '') echo ' selected'; ?>><?php _e('Yes','cp-referrer-and-conversions-tracking'); ?></option>
           </select>
           <br /><br />
-          <strong><?php _e('Delete logs older than','cp-referrer-tracking'); ?>:</strong> <input type="text" name="cp_cpreftrack_rep_days" size="1" value="<?php echo esc_attr(get_option('cp_cpreftrack_rep_days', '90')); ?>" /> <?php _e('days','cp-referrer-tracking'); ?>
+          <strong><?php _e('Delete logs older than','cp-referrer-and-conversions-tracking'); ?>:</strong> <input type="text" name="cp_cpreftrack_rep_days" size="1" value="<?php echo esc_attr(get_option('cp_cpreftrack_rep_days', '90')); ?>" /> <?php _e('days','cp-referrer-and-conversions-tracking'); ?>
           &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;          
         </td>       
      </table>

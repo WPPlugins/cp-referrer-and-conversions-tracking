@@ -144,7 +144,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
     function data_management() {
         global $wpdb;
      
-        load_plugin_textdomain( 'cp-referrer-tracking', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+        load_plugin_textdomain( 'cp-referrer-and-conversions-tracking', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
         
         if ( 'POST' == $_SERVER['REQUEST_METHOD'] && isset( $_POST['CP_REFTRACK_post_edition'] ) && is_admin() && current_user_can('edit_posts') )
         {
@@ -390,7 +390,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
      
         $schedules['cp_every_once_day'] = array(
                 'interval'  => 60*60*24,
-                'display'   => __( 'Once a day', 'cp-referrer-tracking' )
+                'display'   => __( 'Once a day', 'cp-referrer-and-conversions-tracking' )
         );
          
         return $schedules;
