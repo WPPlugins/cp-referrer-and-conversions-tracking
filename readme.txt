@@ -3,7 +3,7 @@ Contributors: codepeople
 Donate link: https://wordpress.dwbooster.com
 Tags: referrer,conversion,referer,logs,stats,marketing
 Requires at least: 4.0
-Tested up to: 5.3
+Tested up to: 5.4
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -145,19 +145,12 @@ For customizing the info in the conversions list:
 * Auto-detection added for Contact Form with PayPal
 * Auto-detection added for CP Polls
 * Auto-detection added for WP Time Slots Booking Form
- 
+  
+= 1.01.04 =
+* Compatible with WordPress 5.4
+
 == Upgrade Notice ==
  
-= 1.01.03 =
-* Conversion tracking for WooCommerce orders
-* Conversion tracking for Contact Form 7 submissions
-* Auto-detection added for Contact Form to Email
-* Auto-detection added for Appointment Hour Booking
-* Auto-detection added for Appointment Booking Calendar
-* Auto-detection added for Booking Calendar Contact Form
-* Auto-detection added for Calculated Fields Form
-* Auto-detection added for Contact Form with PayPal
-* Auto-detection added for CP Polls
-* Auto-detection added for WP Time Slots Booking Form
-
+= 1.01.04 =
+* Compatible with WordPress 5.4
  
