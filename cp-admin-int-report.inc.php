@@ -79,9 +79,9 @@ for ($i=0;$i<=23;$i++)
     else
         $hourly_messages .='0'.($i<23?',':'');
 
-if ($date_start == '')
+if ($date_start == '' && is_array($fields["date"]) && count($fields["date"]))
     $date_start = substr(min(array_keys($fields["date"])),1);
-if ($date_end == '')
+if ($date_end == '' && is_array($fields["date"]) && count($fields["date"]))
     $date_end = substr(max(array_keys($fields["date"])),1);
 
 $daily_messages = '';

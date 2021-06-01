@@ -165,7 +165,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         
         // register IP if needed
         if ( (isset($_COOKIE['cprreftrack']) && $_COOKIE['cprreftrack'] != 'na')  || 
-             ($_COOKIE['cprreftrack'] == $this->no_ref_indicator && @$_SERVER["HTTP_REFERER"] == '' && !count($_GET)) 
+             (isset($_COOKIE['cprreftrack']) && $_COOKIE['cprreftrack'] == $this->no_ref_indicator && @$_SERVER["HTTP_REFERER"] == '' && !count($_GET)) 
            )
            {
                 if ($referrer_browser != '' && (substr($compare_ref."/",0,strlen($local_domain)) != $local_domain) )
