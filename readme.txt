@@ -163,9 +163,12 @@ For customizing the info in the conversions list:
  
 = 1.01.09 =
 * Compatible with WordPress 5.9
+ 
+= 1.01.10 =
+* Fix to CSV export feature
 
 == Upgrade Notice ==
  
-= 1.01.09 =
-* Compatible with WordPress 5.9
+= 1.01.10 =
+* Fix to CSV export feature
  

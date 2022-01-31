@@ -146,6 +146,13 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
      
         load_plugin_textdomain( 'cp-referrer-and-conversions-tracking', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
         
+
+        if ($this->get_param($this->prefix.'_csv') && is_admin() && current_user_can('manage_options'))
+        {
+            $this->export_csv();
+            return;
+        }        
+        
         if ( 'POST' == $_SERVER['REQUEST_METHOD'] && isset( $_POST['CP_REFTRACK_post_edition'] ) && is_admin() && current_user_can('edit_posts') )
         {
             $this->save_edition();
@@ -321,7 +328,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         if ($this->include_user_data_csv)
             $fields = array("ID", "Form ID", "Time", "IP Address", "email");
         else
-            $fields = array("ID", "Form", "Time", "email");        
+            $fields = array("ID", "Time", "referrer");        
        
         $fields_exclude = explode(",",trim(get_option('cp_cpreftrack_bocsvexclude',"")));
         for($j=0; $j<count($fields_exclude); $j++)
@@ -339,7 +346,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
             if ($this->include_user_data_csv)
                 $value = array($item->id,$this->get_option('form_name',''), $item->time, $item->ipaddr, $item->notifyto);
             else
-                $value = array($item->id,$this->get_option('form_name',''),  $item->time, $item->notifyto);
+                $value = array($item->id, $item->time, $item->referrer);
             if ($item->posted_data)
                 $data = unserialize($item->posted_data);
             else
@@ -364,7 +371,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         $end = count($fields);
         for ($i=0; $i<$end; $i++)
         {
-            $hlabel = $this->iconv("utf-8", "ISO-8859-1//TRANSLIT//IGNORE", $this->get_form_field_label($fields[$i],$form));
+            $hlabel = $this->iconv("utf-8", "ISO-8859-1//TRANSLIT//IGNORE", ($fields[$i]));
             echo '"'.str_replace('"','""', $hlabel).'",';
         }    
         echo "\n";
@@ -383,6 +390,31 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         }
 
         exit;
+    }
+    
+
+    protected function iconv($from, $to, $text)
+    {
+        if (get_option('CP_APPB_CSV_CHARFIX',"") == "" && function_exists('iconv'))
+            return iconv($from, $to, $text);
+        else
+            return $text;
+    }
+    
+    
+    function generateSafeFileName($filename) {
+        $filename = strtolower(strip_tags($filename));
+        $filename = str_replace(";","_",$filename);
+        $filename = str_replace("#","_",$filename);
+        $filename = str_replace(" ","_",$filename);
+        $filename = str_replace("'","",$filename);
+        $filename = str_replace('"',"",$filename);
+        $filename = str_replace("__","_",$filename);
+        $filename = str_replace("&","and",$filename);
+        $filename = str_replace("/","_",$filename);
+        $filename = str_replace("\\","_",$filename);
+        $filename = str_replace("?","",$filename);
+        return sanitize_file_name($filename);
     }
     
     
