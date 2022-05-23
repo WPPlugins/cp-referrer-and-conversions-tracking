@@ -169,6 +169,7 @@ echo paginate_links(  array(
       <th width="30"><?php _e('IP','cp-referrer-and-conversions-tracking'); ?></th>
 	  <th style="text-align:left" width="130"><?php _e('Time','cp-referrer-and-conversions-tracking'); ?></th>
 	  <th style="text-align:left"><?php _e('Referrer','cp-referrer-and-conversions-tracking'); ?></th>
+      <th style="text-align:left"><?php _e('Entry page','cp-referrer-and-conversions-tracking'); ?></th>
 	  <th  class="cpnopr"><?php _e('Options','cp-referrer-and-conversions-tracking'); ?></th>
 	</tr>
 	</thead>
@@ -179,6 +180,14 @@ echo paginate_links(  array(
         <th><?php echo $events[$i]->id; ?></th>
 		<td><?php echo $events[$i]->time; ?></td>
 		<td><?php echo htmlentities($events[$i]->referrer); ?></td>		
+        <td><?php 
+              $data = unserialize($events[$i]->data);
+              $entry = $data["entry"];
+              if (strlen($entry) > 53)
+                  $entry = "...".substr($entry, strlen($entry) -50);
+              if ($entry != '')
+                  echo '<a href="'.esc_url($data["entry"]).'" target="_blank" title="'.esc_attr($data["entry"]).'">'.esc_attr($entry).'</a>'; 
+          ?></td>		
 		<td class="cpnopr" style="text-align:center;">        
 		  <input class="button" type="button" name="caldelete_<?php echo $events[$i]->id; ?>" value="Delete" onclick="cp_deleteMessageItem('<?php echo $events[$i]->id; ?>');" />
 		</td>

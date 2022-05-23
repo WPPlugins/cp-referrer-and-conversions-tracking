@@ -175,6 +175,13 @@ echo paginate_links(  array(
                        echo $ref;
                        if ($reflast!= '' && $ref != $reflast)
                            echo '<br /><br /><span style="color:#aaaaaa"><b>Last referrer:</b> '.$reflast;
+                       
+                       $entry = isset($events[$i]->entry) ? $events[$i]->entry : '';
+                       if (strlen($entry) > 33)
+                           $entry = "...".substr($entry, strlen($entry) -30);
+                       if ($entry != '')
+                           echo '<br /><br /><strong>'.__('Entry page:','cp-referrer-and-conversions-tracking').'</strong><br><a href="'.esc_url($data["entry"]).'" target="_blank">'.esc_attr($entry).'</a>'; 
+              
                        echo '</td>';
                    }
                    else

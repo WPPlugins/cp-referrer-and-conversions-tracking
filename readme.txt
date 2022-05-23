@@ -3,7 +3,7 @@ Contributors: codepeople
 Donate link: https://wordpress.dwbooster.com
 Tags: referrer,conversion,referer,logs,stats,marketing
 Requires at least: 4.0
-Tested up to: 5.9
+Tested up to: 6.0
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -167,8 +167,14 @@ For customizing the info in the conversions list:
 = 1.01.10 =
 * Fix to CSV export feature
 
+= 1.01.11 =
+* Added tracking of entry page
+* Compatible with WordPress 6.0
+
 == Upgrade Notice ==
  
-= 1.01.10 =
-* Fix to CSV export feature
+= 1.01.12 =
+* Added tracking of entry page
+* Compatible with WordPress 6.0
+
  

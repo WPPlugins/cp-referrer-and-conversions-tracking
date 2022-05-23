@@ -55,6 +55,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
                 convname VARCHAR(250) DEFAULT '' NOT NULL,            
                 convdesc mediumtext,                
                 referrer VARCHAR(250) DEFAULT '' NOT NULL,
+                entry VARCHAR(250) DEFAULT '' NOT NULL,
                 referrerlast VARCHAR(250) DEFAULT '' NOT NULL,
                 UNIQUE KEY id (id)
             );";
@@ -159,8 +160,10 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
             return;
         }          
 
-        $referrer_browser = @$_SERVER["HTTP_REFERER"];
+        $referrer_browser = (isset($_SERVER["HTTP_REFERER"])?$_SERVER["HTTP_REFERER"]:'');
         
+        $entry_page = (isset($_SERVER["REQUEST_URI"])?$_SERVER["REQUEST_URI"]:'');
+ 
         $local_domain = strtolower($this->get_site_url());
         $local_domain = str_replace ('//www.', '//', strtolower($local_domain) );
         $local_domain = str_replace ('https://', '', strtolower($local_domain) );
@@ -223,13 +226,13 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
             {
                 setCookie('cprreftrack', $logs[0]->referrer, time()+( $this->cookie_tracking_days * 24 * 60 * 60),"/");
                 return;
-            }                           
+            }
             setCookie('cprreftrack', $referrer, time()+( $this->cookie_tracking_days * 24 * 60 * 60),"/");
             // if new, store log
             $wpdb->insert( $wpdb->prefix.$this->table_messages, array( 'id' => $remote_addr,
                                                                        'time' => current_time('mysql'),
                                                                        'referrer' => sanitize_text_field($referrer),
-                                                                       'data' => serialize(array())
+                                                                       'data' => serialize(array('entry' => $entry_page))
                                                                        ));
         }
  
@@ -255,15 +258,35 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
     }
     
     
+    public function get_entry ($ip = '', $cookie = '')
+    {
+        global $wpdb;
+        if ($ip == '')
+            $ip = sanitize_text_field($_SERVER["REMOTE_ADDR"]);
+
+        $logs = $wpdb->get_results($wpdb->prepare ("SELECT referrer FROM ".$wpdb->prefix.$this->table_messages." WHERE id=%s", $ip));
+        if (count($logs))
+        {
+            $data = unserialize($events[$i]->data);
+            return (isset($data["entry"]) ? $data["entry"] : "");
+        }
+        else 
+            return "";        
+    }
+    
+    
     public function register_conversion($conversion_name, $conversion_description, $referrer = '')
     {
         global $wpdb;        
         if ($referrer == '')
             $referrer = $this->get_referrer();
+        $entry = $this->get_entry();
+        $this->add_field_verify($wpdb->prefix.$this->table_conversions, 'entry');
         $wpdb->insert( $wpdb->prefix.$this->table_conversions, array( 'convname' => $conversion_name,
                                                                        'convdesc' => $conversion_description,
                                                                        'referrer' => $referrer,
                                                                        'referrerlast' => sanitize_text_field($referrer!=$_COOKIE['cprreftracklatest']?$_COOKIE['cprreftracklatest']:''),
+                                                                       'entry' => $referrer,
                                                                        'time' => current_time('mysql'),
                                                                        ));                                                                         
     }
@@ -347,11 +370,10 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
                 $value = array($item->id,$this->get_option('form_name',''), $item->time, $item->ipaddr, $item->notifyto);
             else
                 $value = array($item->id, $item->time, $item->referrer);
-            if ($item->posted_data)
-                $data = unserialize($item->posted_data);
+            if ($item->data)
+                $data = unserialize($item->data);
             else
-                $data = array();
-
+                $data = array();            
             $end = count($fields);
             for ($i=0; $i<$end; $i++)
                 if (isset($data[$fields[$i]]) ){
