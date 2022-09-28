@@ -171,10 +171,16 @@ For customizing the info in the conversions list:
 * Added tracking of entry page
 * Compatible with WordPress 6.0
 
+= 1.01.12 =
+* Added user registration tracking add-on
+* Added tracking of entry page
+
+= 1.01.14 =
+* Contact Form 7 integration improvement
+
 == Upgrade Notice ==
  
-= 1.01.12 =
-* Added tracking of entry page
-* Compatible with WordPress 6.0
+= 1.01.14 =
+* Contact Form 7 integration improvement
 
  

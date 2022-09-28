@@ -71,7 +71,15 @@ if( !class_exists( 'CPREFTRACK_CF7' ) )
             $mail = $contact_form->prop( 'mail' ); // returns array 
             $mail['body'] .= "\n\n".'Referrer: '. $referrer;     
             $contact_form->set_properties( array( 'mail' => $mail ) );
-            $email = $mail['recipient'];     
+            $email = sanitize_email($mail['recipient']);     
+            
+            $submission = WPCF7_Submission::get_instance();  
+            if ( $submission ) {
+                $posted_data = $submission->get_posted_data();
+                if (!empty($posted_data['your-email']))
+                    $email .= ' Sent by: '.sanitize_email($posted_data['your-email']);
+            }  
+    
             do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix.$email);
         }
 
