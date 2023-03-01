@@ -181,9 +181,12 @@ For customizing the info in the conversions list:
 = 1.01.15 =
 * Compatible with WordPress 6.1
 
+= 1.01.16 =
+* PHP 8 updates
+
 == Upgrade Notice ==
  
-= 1.01.15 =
-* Compatible with WordPress 6.1
+= 1.01.16 =
+* PHP 8 updates
 
  

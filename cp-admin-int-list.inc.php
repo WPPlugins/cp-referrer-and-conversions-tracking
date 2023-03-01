@@ -25,7 +25,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
  
 
 ?>
-<h1><?php echo $this->plugin_name; ?></h1>
+<h1><?php echo esc_html($this->plugin_name); ?></h1>
 
 <script type="text/javascript">
         

@@ -191,9 +191,9 @@ echo paginate_links(  array(
 	 <?php for ($i=($current_page-1)*$records_per_page; $i<$current_page*$records_per_page; $i++) if (isset($events[$i])) { ?>    
 	  <tr class='<?php if (($i%2)) { ?>alternate <?php } ?>author-self status-draft format-default iedit' valign="top">
         <th><input type="checkbox" name="c<?php echo $i-($current_page-1)*$records_per_page; ?>" value="<?php echo $events[$i]->id; ?>" /></th>
-        <td><?php echo $events[$i]->refname; ?></td>
-        <td><?php echo $events[$i]->paramname; ?></td>
-		<td><?php echo $events[$i]->paramvalue; ?></td>
+        <td><?php echo esc_html($events[$i]->refname); ?></td>
+        <td><?php echo esc_html($events[$i]->paramname); ?></td>
+		<td><?php echo esc_html($events[$i]->paramvalue); ?></td>
         <td><a href="<?php echo $this->get_site_url();?>?<?php echo urlencode($events[$i]->paramname); ?>=<?php echo urlencode($events[$i]->paramvalue); ?>"><?php echo $this->get_site_url();?>?<span style="color:red"><?php echo urlencode($events[$i]->paramname); ?></span>=<span style="color:red"><?php echo urlencode($events[$i]->paramvalue); ?></span></a></td>
 		<td class="cpnopr" style="text-align:center;">        
 		  <input class="button" type="button" name="caldelete_<?php echo $events[$i]->id; ?>" value="Delete" onclick="cp_deleteMessageItem(<?php echo $events[$i]->id; ?>);" />

@@ -54,7 +54,7 @@ else
 <h1><?php _e('CP Referrer Tracking - General Settings','cp-referrer-and-conversions-tracking'); ?></h1>
 
 <?php
-    if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".$message."</h2></div>";
+    if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".esc_html(message)."</h2></div>";
 ?>
 <nav class="nav-tab-wrapper ahb-tab-wrapper">
 	<a href="javascript:void(0);" class="nav-tab<?php if ($gotab == '') echo ' nav-tab-active'; ?>" data-tab="1"><?php _e('General Settings','cp-referrer-and-conversions-tracking'); ?></a>	

@@ -130,7 +130,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 
 <h1><?php _e('CP Referrer Tracking - Add Ons','cp-referrer-and-conversions-tracking'); ?></h1>
 
-<?php if ($message) echo "<div id='setting-error-settings_updated' class='updated' style='margin:0px;'><h2>".$message."</h2></div> <br />";
+<?php if ($message) echo "<div id='setting-error-settings_updated' class='updated' style='margin:0px;'><h2>".esc_html($message)."</h2></div> <br />";
  ?>
 
 <div class="ahb-buttons-container">

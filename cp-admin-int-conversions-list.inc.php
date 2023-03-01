@@ -63,7 +63,7 @@ $events_query = "SELECT * FROM ".$wpdb->prefix.$this->table_conversions." WHERE 
 $events = $wpdb->get_results( $events_query );
 $total_pages = ceil(count($events) / $records_per_page);
 
-if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".$message."</h2></div>";
+if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".esc_html($message)."</h2></div>";
 
 $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
 
@@ -180,7 +180,7 @@ echo paginate_links(  array(
                        if (strlen($entry) > 33)
                            $entry = "...".substr($entry, strlen($entry) -30);
                        if ($entry != '')
-                           echo '<br /><br /><strong>'.__('Entry page:','cp-referrer-and-conversions-tracking').'</strong><br><a href="'.esc_url($data["entry"]).'" target="_blank">'.esc_attr($entry).'</a>'; 
+                           echo '<br /><br /><strong>'.__('Entry page:','cp-referrer-and-conversions-tracking').'</strong><br><a href="'.esc_url($data["entry"]).'" target="_blank">'.esc_html($entry).'</a>'; 
               
                        echo '</td>';
                    }

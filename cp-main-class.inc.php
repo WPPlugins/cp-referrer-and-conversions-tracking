@@ -285,7 +285,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         $wpdb->insert( $wpdb->prefix.$this->table_conversions, array( 'convname' => $conversion_name,
                                                                        'convdesc' => $conversion_description,
                                                                        'referrer' => $referrer,
-                                                                       'referrerlast' => sanitize_text_field($referrer!=$_COOKIE['cprreftracklatest']?$_COOKIE['cprreftracklatest']:''),
+                                                                       'referrerlast' => sanitize_text_field(!empty($_COOKIE['cprreftracklatest']) && $referrer!=$_COOKIE['cprreftracklatest']?$_COOKIE['cprreftracklatest']:''),
                                                                        'entry' => $referrer,
                                                                        'time' => current_time('mysql'),
                                                                        ));                                                                         

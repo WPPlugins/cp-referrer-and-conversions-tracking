@@ -77,7 +77,7 @@ $events = $wpdb->get_results( $events_query );
 $total_pages = ceil(count($events) / $records_per_page);
 
 
-if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".$message."</h2></div>";
+if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".esc_html($message)."</h2></div>";
 
 $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
 
@@ -158,7 +158,7 @@ echo paginate_links(  array(
 
 <div id="dex_printable_contents" style="overflow:visible !important;"> 
 <form name="dex_table_form" id="dex_table_form" action="admin.php" method="get">
- <input type="hidden" name="page" value="<?php echo $this->menu_parameter; ?>_list" />
+ <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_list" />
  <input type="hidden" name="delmark" value="1" />
  <input type="hidden" name="anonce" value="<?php echo $nonce; ?>" />
 <div class="ahb-orderssection-container" style="background:#f6f6f6;padding-bottom:20px;">
@@ -186,7 +186,7 @@ echo paginate_links(  array(
               if (strlen($entry) > 53)
                   $entry = "...".substr($entry, strlen($entry) -50);
               if ($entry != '')
-                  echo '<a href="'.esc_url($data["entry"]).'" target="_blank" title="'.esc_attr($data["entry"]).'">'.esc_attr($entry).'</a>'; 
+                  echo '<a href="'.esc_url($data["entry"]).'" target="_blank" title="'.esc_attr($data["entry"]).'">'.esc_html($entry).'</a>'; 
           ?></td>		
 		<td class="cpnopr" style="text-align:center;">        
 		  <input class="button" type="button" name="caldelete_<?php echo $events[$i]->id; ?>" value="Delete" onclick="cp_deleteMessageItem('<?php echo $events[$i]->id; ?>');" />

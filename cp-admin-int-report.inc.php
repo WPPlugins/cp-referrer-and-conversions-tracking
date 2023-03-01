@@ -175,7 +175,7 @@ else
 <div class="ahb-statssection-container" style="background:#f6f6f6;">
 	<div class="ahb-statssection-header">
         <form action="admin.php" name="cfm_formrep" method="get">
-         <input type="hidden" name="page" value="<?php echo $this->menu_parameter; ?>_report" />
+         <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_report" />
          <input type="hidden" name="search" value="<?php echo esc_attr($search_value); ?>" />
          <input type="hidden" name="dfrom" value="<?php echo esc_attr($date_start); ?>" />
          <input type="hidden" name="dto" value="<?php echo esc_attr($date_end); ?>" />
@@ -208,7 +208,7 @@ else
           $count = 0;
           foreach ($arr as $item => $value)
           {
-              echo htmlentities($value).' times: '.(strlen($item)>50?substr($item,1,50).'...':substr($item,1));
+              echo htmlentities($value).' times: '.esc_html(strlen($item)>50?substr($item,1,50).'...':substr($item,1));
               echo '<div style="width:'.round($value/$total*100).'%;border:1px solid white;margin-bottom:3px;font-size:9px;text-align:center;font-weight:bold;background-color:#'.$color_array[$count].'">'.round($value/$total*100,2).'%</div>';
               $count++;
               if ($count >= count($color_array)) $count = count($color_array)-1;
