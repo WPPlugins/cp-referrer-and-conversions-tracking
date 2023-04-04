@@ -3,7 +3,7 @@ Contributors: codepeople
 Donate link: https://wordpress.dwbooster.com
 Tags: referrer,conversion,referer,logs,stats,marketing
 Requires at least: 4.0
-Tested up to: 6.1
+Tested up to: 6.2
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -184,9 +184,12 @@ For customizing the info in the conversions list:
 = 1.01.16 =
 * PHP 8 updates
 
+= 1.01.17 =
+* Compatible with WordPress 6.2
+
 == Upgrade Notice ==
  
-= 1.01.16 =
-* PHP 8 updates
+= 1.01.17 =
+* Compatible with WordPress 6.2
 
  
