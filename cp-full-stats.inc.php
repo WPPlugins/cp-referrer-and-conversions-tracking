@@ -2,7 +2,7 @@
 
 global $wpdb;
 
-$this->item = intval($_GET["cal"]);
+$this->item = 1; //intval($_GET["cal"]);
 
 $current_user = wp_get_current_user();
 $current_user_access = current_user_can('edit_pages');
@@ -34,12 +34,14 @@ foreach($rows as $item)
 
 function getStatsBy($arr)
 {
+    $str = '';
     foreach($arr as $key => $value)
        $str .= '<div><b>'.substr($key,1).'</b> '.$value.' logs </div>';   
     return $str;  
 }
 function getStatsByMonthly($arr, $is_incoming = false)
 {
+    $str = '';
     $dt = ($is_incoming ? strtotime("-11 months") : time());
     for ($i=0;$i<12;$i++)
     {
@@ -51,6 +53,7 @@ function getStatsByMonthly($arr, $is_incoming = false)
 }
 function getStatsByWeekly($arr, $is_incoming = false)
 {
+    $str = '';
     $dt = ($is_incoming ? strtotime("-11 weeks") : time());
     for ($i=0;$i<12;$i++)
     {
@@ -62,6 +65,7 @@ function getStatsByWeekly($arr, $is_incoming = false)
 }
 function getStatsByDaily($arr, $is_incoming = false)
 {
+    $str = '';
     $dt = ($is_incoming ? strtotime("-29 days") : time());
     for ($i=0;$i<30;$i++)
     {

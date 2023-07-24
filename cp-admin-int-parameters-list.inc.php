@@ -1,12 +1,12 @@
 <?php
 
 
-$this->item = intval($_GET["cal"]);
+$this->item = 1; //intval($_GET["cal"]);
 
 $current_user = wp_get_current_user();
 $current_user_access = current_user_can('edit_pages');
 
-$current_page = intval($_GET["p"]);
+$current_page = (isset($_GET["p"]) ? intval($_GET["p"]) : 1);
 if (!$current_page) $current_page = 1;
 $records_per_page = 50;
 
@@ -16,6 +16,8 @@ if ( !is_admin() || !$current_user_access)
     exit;
 }
 
+$rawfrom = (isset($_GET["dfrom"]) ? sanitize_text_field($_GET["dfrom"]) : '');
+$rawto = (isset($_GET["dto"]) ? sanitize_text_field(@$_GET["dto"]) : '');
 
 $message = "";
 
@@ -154,7 +156,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
 
 
 echo paginate_links(  array(
-    'base'         => 'admin.php?page='.$this->menu_parameter.'_parameters&%_%&dfrom='.urlencode($_GET["dfrom"]).'&dto='.urlencode($_GET["dto"]).'&search='.urlencode($search_value),
+    'base'         => 'admin.php?page='.$this->menu_parameter.'_parameters&%_%&dfrom='.urlencode($rawfrom).'&dto='.urlencode($rawto).'&search='.urlencode($search_value),
     'format'       => '&p=%#%',
     'total'        => $total_pages,
     'current'      => $current_page,
@@ -226,16 +228,6 @@ echo paginate_links(  array(
       w.print();
       w.close();
  }
-
- var $j = jQuery.noConflict();
- $j(function() {
- 	$j("#dfrom").datepicker({
-                    dateFormat: '<?php echo $this->get_option('date_format', 'mm/dd/yy'); ?>'
-                 });
- 	$j("#dto").datepicker({
-                    dateFormat: '<?php echo $this->get_option('date_format', 'mm/dd/yy'); ?>'
-                 });
- });
 
 </script>
 

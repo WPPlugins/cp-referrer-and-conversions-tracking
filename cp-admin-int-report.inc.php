@@ -3,7 +3,7 @@
 
 global $wpdb;
 
-$this->item = intval($_GET["cal"]);
+$this->item = 1; //intval($_GET["cal"]);
 
 $current_user = wp_get_current_user();
 $current_user_access = current_user_can('edit_pages');
@@ -22,7 +22,7 @@ if ( !is_admin() )
 }
 
 
-$current_page = intval($_GET["p"]);
+$current_page = (isset($_GET["p"]) ? intval($_GET["p"]) : 1);
 if (!$current_page) $current_page = 1;
 $records_per_page = 50;
 
@@ -31,19 +31,19 @@ $date_end = '';
 $search_value = '';
 
 $cond = '';
-if ($_GET["search"] != '') 
+if (isset($_GET["search"]) && $_GET["search"] != '') 
 {
     $search_value = sanitize_text_field($_GET["search"]);
     $cond .= " AND (data like '%".esc_sql($search_value)."%' OR referrer LIKE '%".esc_sql($search_value)."%')";
 }   
 
-if ($_GET["dfrom"] != '')
+if (isset($_GET["dfrom"]) && $_GET["dfrom"] != '')
 {
     $date_start = sanitize_text_field($_GET["dfrom"]);
     $cond .= " AND (`time` >= '".esc_sql($date_start)."')";
 }
 
-if ($_GET["dto"] != '')
+if (isset($_GET["dto"]) && $_GET["dto"] != '')
 {
     $date_end = sanitize_text_field($_GET["dto"]);
     $cond .= " AND (`time` <= '".esc_sql($date_end)." 23:59:59')";
@@ -104,13 +104,7 @@ else
 $color_array = array('ffb3ba','ffdfba','ffffba', 'baffc9', 'bae1ff', 'a8e6cf', 'dcedc1', 'ffd3b6', 'ffaaa5', 'ff8b94', 'eea990', 'adcbe3', 'e2f4c7');
 
 
-if ($this->item)
-{
-    $form = json_decode($this->cleanJSON($this->get_option('form_structure', CP_APPBOOK_DEFAULT_form_structure)));
-    $form = $form[0];
-}
-else
-    $form = array();
+$form = array();
 
 ?>
 

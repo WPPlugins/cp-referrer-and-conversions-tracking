@@ -1,12 +1,12 @@
 <?php
 
 
-$this->item = intval($_GET["cal"]);
+$this->item = 1; //intval($_GET["cal"]);
 
 $current_user = wp_get_current_user();
 $current_user_access = current_user_can('edit_pages');
 
-$current_page = intval($_GET["p"]);
+$current_page = (isset($_GET["p"]) ? intval($_GET["p"]) : 1);
 if (!$current_page) $current_page = 1;
 $records_per_page = 50;
 
@@ -41,11 +41,6 @@ else if (isset($_GET['ld']) && $_GET['ld'] != '')
 
 $rawfrom = (isset($_GET["dfrom"]) ? sanitize_text_field($_GET["dfrom"]) : '');
 $rawto = (isset($_GET["dto"]) ? sanitize_text_field(@$_GET["dto"]) : '');
-if ($this->get_option('date_format', 'mm/dd/yy') == 'dd/mm/yy')
-{
-    $rawfrom = str_replace('/','.',$rawfrom);
-    $rawto = str_replace('/','.',$rawto);
-}
 
 $cond = '';
 if (isset($_GET["search"]) && $_GET["search"] != '') 
@@ -109,8 +104,8 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
       <form action="admin.php" method="get">
         <input type="hidden" name="page" value="<?php echo $this->menu_parameter; ?>_conversions" />
 		<nobr><label><?php _e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr(@$_GET["dfrom"]); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr(@$_GET["dto"]); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php _e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr($rawfrom); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php _e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr($rawto); ?>" >&nbsp;&nbsp;</nobr>
        <div style="float:right">
 		<nobr>
             <input type="submit" name="ds" value="<?php _e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="">
@@ -125,7 +120,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
 
 
 echo paginate_links(  array(
-    'base'         => 'admin.php?page='.$this->menu_parameter.'_conversions&%_%&dfrom='.urlencode($_GET["dfrom"]).'&dto='.urlencode($_GET["dto"]).'&search='.urlencode($search_value),
+    'base'         => 'admin.php?page='.$this->menu_parameter.'_conversions&%_%&dfrom='.urlencode($rawfrom).'&dto='.urlencode($rawto).'&search='.urlencode($search_value),
     'format'       => '&p=%#%',
     'total'        => $total_pages,
     'current'      => $current_page,
@@ -222,10 +217,10 @@ echo paginate_links(  array(
  var $j = jQuery.noConflict();
  $j(function() {
  	$j("#dfrom").datepicker({
-                    dateFormat: '<?php echo $this->get_option('date_format', 'mm/dd/yy'); ?>'
+                    dateFormat: 'yy-mm-dd'
                  });
  	$j("#dto").datepicker({
-                    dateFormat: '<?php echo $this->get_option('date_format', 'mm/dd/yy'); ?>'
+                    dateFormat: 'yy-mm-dd'
                  });
  });
 
