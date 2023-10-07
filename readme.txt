@@ -190,9 +190,12 @@ For customizing the info in the conversions list:
 = 1.01.18 =
 * Compatible with WordPress 6.3
 
+= 1.01.19 =
+* Code improvements
+
 == Upgrade Notice ==
  
-= 1.01.18 =
-* Compatible with WordPress 6.3
+= 1.01.19 =
+* Code improvements
 
  
