@@ -196,9 +196,12 @@ For customizing the info in the conversions list:
 = 1.01.20 =
 * Compatible with WordPress 6.4
 
+= 1.01.21 =
+* Tracking fixes
+
 == Upgrade Notice ==
  
-= 1.01.20 =
-* Compatible with WordPress 6.4
+= 1.01.21 =
+* Tracking fixes
 
  

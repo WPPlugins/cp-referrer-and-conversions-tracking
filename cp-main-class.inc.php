@@ -264,10 +264,10 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         if ($ip == '')
             $ip = sanitize_text_field($_SERVER["REMOTE_ADDR"]);
 
-        $logs = $wpdb->get_results($wpdb->prepare ("SELECT referrer FROM ".$wpdb->prefix.$this->table_messages." WHERE id=%s", $ip));
+        $logs = $wpdb->get_results($wpdb->prepare ("SELECT data FROM ".$wpdb->prefix.$this->table_messages." WHERE id=%s", $ip));
         if (count($logs))
         {
-            $data = unserialize($events[$i]->data);
+            $data = unserialize($logs[0]->data);
             return (isset($data["entry"]) ? $data["entry"] : "");
         }
         else 

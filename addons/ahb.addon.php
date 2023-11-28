@@ -99,7 +99,7 @@ if( !class_exists( 'CPREFTRACK_AppointmentHourBooking' ) )
 		{
             $referrer = apply_filters( 'cpreftrack_referrer', '' );
             $params["referrer_url"] = $referrer;
-            $params["referrer_url_latest"] = sanitize_text_field($_COOKIE['cprreftracklatest']);
+            $params["referrer_url_latest"] = isset($_COOKIE['cprreftracklatest']) ? sanitize_text_field($_COOKIE['cprreftracklatest']) : '';
         }
 
 
