@@ -3,8 +3,8 @@ Contributors: codepeople
 Donate link: https://wordpress.dwbooster.com
 Tags: referrer,conversion,referer,logs,stats
 Requires at least: 4.0
-Tested up to: 6.5
-Stable tag: 1.01.22
+Tested up to: 6.6
+Stable tag: 1.01.23
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -203,10 +203,12 @@ For customizing the info in the conversions list:
 * Compatible with WordPress 6.5
 * Removed tag: marketing
 
+= 1.01.23 =
+* Compatible with WordPress 6.6
+
 == Upgrade Notice ==
  
-= 1.01.22 =
-* Compatible with WordPress 6.5
-* Removed tag: marketing
+= 1.01.23 =
+* Compatible with WordPress 6.6
 
  
