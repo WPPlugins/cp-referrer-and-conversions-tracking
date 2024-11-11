@@ -119,13 +119,13 @@ if( !class_exists( 'CPREFTRACK_CPContactFormwPayPal' ) )
             {
                 $param_registered = "<nobr>".$param_registered."</nobr><br /><b><span style=\"color:#FF9415\">Email: <a href=\"?page=cp_contact_form_paypal.php&cal=0&list=1&search=".urlencode($myrows[0]->notifyto)."&dfrom&dto&ds=Filter\">".sanitize_email($myrows[0]->notifyto)."</a></span></b><br />";
                 if ($myrows[0]->paid == 1) {
-		              $param_registered .= '<span style="color:#00aa00;font-weight:bold">'.__("Paid").'</span>';
+		              $param_registered .= '<span style="color:#00aa00;font-weight:bold">'.__("Paid",'cp-referrer-and-conversions-tracking').'</span>';
 		          }
 		          else
                       if ($myrows[0] == 2)
-                          $param_registered .= '<span style="color:#999999;font-weight:bold">'.__("Refunded").'</span>';
+                          $param_registered .= '<span style="color:#999999;font-weight:bold">'.__("Refunded",'cp-referrer-and-conversions-tracking').'</span>';
                       else
-		                  $param_registered .= '<span style="color:#ff0000;font-weight:bold">'.__("Not Paid").'</span>';
+		                  $param_registered .= '<span style="color:#ff0000;font-weight:bold">'.__("Not Paid",'cp-referrer-and-conversions-tracking').'</span>';
             }
 
             return $param_registered;

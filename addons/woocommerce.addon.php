@@ -72,7 +72,7 @@ if( !class_exists( 'CPREFTRACK_WooCommerce' ) )
 
 		public function my_custom_checkout_field_display_admin_order_meta($order)
         {
-            echo '<p><strong><a href="admin.php?page=cp_reftrack_conversions">'.__('Referrer').'</a>:</strong> <br/>' . get_post_meta( $order->get_id(), 'cpreftrack_woocommerce_referrer', true ) . '</p>';
+            echo '<p><strong><a href="admin.php?page=cp_reftrack_conversions">'.__('Referrer','cp-referrer-and-conversions-tracking').'</a>:</strong> <br/>' . get_post_meta( $order->get_id(), 'cpreftrack_woocommerce_referrer', true ) . '</p>';
         }
 
 		public function track_conversion_submission($order_id)

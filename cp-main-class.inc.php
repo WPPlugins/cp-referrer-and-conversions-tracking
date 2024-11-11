@@ -68,11 +68,11 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
     /* Code for the admin area */
 
     public function plugin_page_links($links) {
-        $customAdjustments_link = '<a href="http://wordpress.dwbooster.com/contact-us">'.__('Request custom changes').'</a>';
+        $customAdjustments_link = '<a href="http://wordpress.dwbooster.com/contact-us">'.__('Request custom changes','cp-referrer-and-conversions-tracking').'</a>';
     	array_unshift($links, $customAdjustments_link);
-        $settings_link = '<a href="admin.php?page='.$this->menu_parameter.'">'.__('Settings').'</a>';
+        $settings_link = '<a href="admin.php?page='.$this->menu_parameter.'">'.__('Settings','cp-referrer-and-conversions-tracking').'</a>';
     	array_unshift($links, $settings_link);
-    	$help_link = '<a href="'.$this->plugin_URL.'">'.__('Help').'</a>';
+    	$help_link = '<a href="'.$this->plugin_URL.'">'.__('Help','cp-referrer-and-conversions-tracking').'</a>';
     	array_unshift($links, $help_link);
     	return $links;
     }

@@ -149,8 +149,8 @@ echo paginate_links(  array(
     'end_size'     => 1,
     'mid_size'     => 2,
     'prev_next'    => True,
-    'prev_text'    => __('&laquo; Previous'),
-    'next_text'    => __('Next &raquo;'),
+    'prev_text'    => __('&laquo; Previous','cp-referrer-and-conversions-tracking'),
+    'next_text'    => __('Next &raquo;','cp-referrer-and-conversions-tracking'),
     'type'         => 'plain',
     'add_args'     => False
     ) );
