@@ -146,6 +146,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
         global $wpdb;
      
         load_plugin_textdomain( 'cp-referrer-and-conversions-tracking', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+        cpreftrack_loading_add_ons();
         
 
         if ($this->get_param($this->prefix.'_csv') && is_admin() && current_user_can('manage_options'))
