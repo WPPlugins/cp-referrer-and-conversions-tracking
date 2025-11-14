@@ -77,9 +77,9 @@ if( !class_exists( 'CPREFTRACK_AppointmentHourBooking' ) )
                 {
 ?>
             <div class="card h-100" style="background-color: #ffdddd">
-                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo $this->name; ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
+                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
 
-                <input class="button mt-2" type="button" name="calreport_<?php echo $item->id; ?>" value="<?php _e('Install Appointment Hour Booking plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=appointment-hour-booking&amp;';" />
+                <input class="button mt-2" type="button" name="calreport_<?php echo intval($item->id); ?>" value="<?php esc_html_e('Install Appointment Hour Booking plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=appointment-hour-booking&amp;';" />
             </div>
 <?php
                 }
@@ -87,7 +87,7 @@ if( !class_exists( 'CPREFTRACK_AppointmentHourBooking' ) )
                 {
 ?>
             <div class="card h-100" style="background-color: #ffdddd">
-                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo $this->name; ?></strong> add-on has been enabled but the related plugin is not active. Please remember to <a href="plugins.php">activate the related plugin</a> to get listed its conversions.</div>
+                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin is not active. Please remember to <a href="plugins.php">activate the related plugin</a> to get listed its conversions.</div>
             </div>
 <?php
                 }

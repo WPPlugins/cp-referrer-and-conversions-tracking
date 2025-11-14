@@ -4,8 +4,8 @@ Donate link: https://wordpress.dwbooster.com
 Tags: referrer,conversion,referer,logs,stats
 Requires at least: 4.0
 Tested up to: 6.8
-Stable tag: 1.01.25
-License: GPLv2 or later
+Stable tag: 1.01.26
+License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 CP Referrer and Conversion Tracking registers how the website visitors reached the website, identifying the referral website. Also track conversions.
@@ -212,8 +212,11 @@ For customizing the info in the conversions list:
 = 1.01.25 =
 * Compatible with WordPress 6.8
 
+= 1.01.26 =
+* Improvements
+
 == Upgrade Notice ==
  
-= 1.01.25 =
-* Compatible with WordPress 6.8
+= 1.01.26 =
+* Improvements
  

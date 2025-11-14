@@ -68,37 +68,37 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 	<div class="ahb-section row">
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calmessages_<?php echo esc_attr($itemid); ?>" value="<?php _e('Tracking Logs','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewMessages(<?php echo esc_attr($itemid); ?>);" />
+                <input class="button mt-2" type="button" name="calmessages_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Tracking Logs','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewMessages(<?php echo esc_attr($itemid); ?>);" />
                 <div class="mt-2">Logs of every website visitor with identified referrer.</div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php _e('Tracking Stats','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewReport(<?php echo esc_attr($itemid); ?>);" />                 
+                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Tracking Stats','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewReport(<?php echo esc_attr($itemid); ?>);" />                 
                 <div class="mt-2">Stats of visitors with idenfitied referrers</div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php _e('Referral Sources','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewSources(<?php echo esc_attr($itemid); ?>);" />                 
+                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Referral Sources','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_viewSources(<?php echo esc_attr($itemid); ?>);" />                 
                 <div class="mt-2">The purpose of this section is to create links for different marketing platforms, making easier to identify the referral.</div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php _e('Conversions','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_conversions(<?php echo esc_attr($itemid); ?>);" />                 
+                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Conversions','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_conversions(<?php echo esc_attr($itemid); ?>);" />                 
                 <div class="mt-2">Conversions with their referrals. Example: form submissions, orders, purchases, bookings... Enable the add-ons of the related plugins to get the conversion tracking enabled for each plugin.</div>
             </div>
         </div>
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php _e('Add Ons','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_addons(<?php echo esc_attr($itemid); ?>);" />                 
+                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Add Ons','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_addons(<?php echo esc_attr($itemid); ?>);" />                 
                 <div class="mt-2">Add-ons for registering conversions of specific plugins (contact forms, bookings forms, etc...). Enable the add-ons of the related plugins as needed.</div>
             </div>
         </div>        
         <div class="col-xl-2 col-lg-3 col-md-4 p-2">
             <div class="card h-100">
-                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php _e('Support','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_support(<?php echo esc_attr($itemid); ?>);" />    
+                <input class="button mt-2" type="button" name="calreport_<?php echo esc_attr($itemid); ?>" value="<?php esc_attr_e('Support','cp-referrer-and-conversions-tracking'); ?>" onclick="cp_support(<?php echo esc_attr($itemid); ?>);" />    
                 <div class="mt-2">Need help or want to request specific features? Contact us and we will be happy to help!</div>
             </div>
         </div>
@@ -132,6 +132,6 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 <div id="normal-sortables" class="meta-box-sortables" <?php if (!$current_user_access) echo ' style="display:none; " ' ?> > 
 
 
-[<a href="https://wordpress.dwbooster.com/contact-us" target="_blank"><?php _e('Request Custom Modifications','cp-referrer-and-conversions-tracking'); ?></a>] | [<a href="<?php echo esc_attr($this->plugin_URL); ?>" target="_blank"><?php _e('Help','cp-referrer-and-conversions-tracking'); ?></a>]
+[<a href="https://wordpress.dwbooster.com/contact-us" target="_blank"><?php esc_html_e('Request Custom Modifications','cp-referrer-and-conversions-tracking'); ?></a>] | [<a href="<?php echo esc_attr($this->plugin_URL); ?>" target="_blank"><?php esc_html_e('Help','cp-referrer-and-conversions-tracking'); ?></a>]
 </form>
 </div>

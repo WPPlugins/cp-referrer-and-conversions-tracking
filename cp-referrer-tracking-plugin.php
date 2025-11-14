@@ -1,12 +1,12 @@
 <?php
 /*
-Plugin Name: CP Referrer and Conversions Tracking
+Plugin Name: CP Referrer and Conversion Tracking
 Plugin URI: http://wordpress.dwbooster.com/
 Description: Tracking for referrer websites and conversions.
-Version: 1.01.25
+Version: 1.01.26
 Author: CodePeople
 Author URI: http://codepeople.net
-License: GPL
+License: GPLv2
 Text Domain: cp-referrer-and-conversions-tracking
 */
 
@@ -79,8 +79,7 @@ if ( is_admin() ) {
 // banner             
 $codepeople_promote_banner_plugins_cp_ref[ 'cp-referrer-and-conversions-tracking' ] = array( 
                       'plugin_name' => 'CP Referrer and Conversion Tracking', 
-                      'plugin_url'  => 'https://wordpress.org/support/plugin/cp-referrer-and-conversions-tracking/reviews/?filter=5#new-post'
+                      'plugin_url'  => 'https://wordpress.org/support/plugin/cp-referrer-and-conversions-tracking/reviews/?#new-post'
 );
 require_once 'banner.php';
 
-?>

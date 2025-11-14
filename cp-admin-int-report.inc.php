@@ -116,10 +116,10 @@ $form = array();
 
 ?>
 
-<h1><?php _e('Stats','cp-referrer-and-conversions-tracking'); ?></h1>
+<h1><?php esc_html_e('Stats','cp-referrer-and-conversions-tracking'); ?></h1>
 
 <div class="ahb-buttons-container">
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
 	<div class="clear"></div>
 </div>
 
@@ -130,15 +130,15 @@ $form = array();
        <form action="admin.php" method="get">
         <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_report" />
         <input type="hidden" name="field" value="<?php echo esc_attr($field_filter); ?>" />
-		<nobr><label><?php _e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr($date_start); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr($date_end); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php _e('Item','cp-referrer-and-conversions-tracking'); ?>:</label> <select id="cal" name="cal">
-          <option value="0">[<?php _e('All Items','cp-referrer-and-conversions-tracking'); ?>]</option>
+		<nobr><label><?php esc_html_e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
+		<nobr><label><?php esc_html_e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr($date_start); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php esc_html_e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr($date_end); ?>" >&nbsp;&nbsp;</nobr>
+		<nobr><label><?php esc_html_e('Item','cp-referrer-and-conversions-tracking'); ?>:</label> <select id="cal" name="cal">
+          <option value="0">[<?php esc_html_e('All Items','cp-referrer-and-conversions-tracking'); ?>]</option>
     </select></nobr>
 		<nobr>
-			<input type="submit" name="<?php echo esc_attr($this->prefix); ?>_csv" value="<?php _e('Export to CSV','cp-referrer-and-conversions-tracking'); ?>" class="button" style="float:right;margin-left:10px;">
-			<input type="submit" name="ds" value="<?php _e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="float:right;">
+			<input type="submit" name="<?php echo esc_attr($this->prefix); ?>_csv" value="<?php esc_attr_e('Export to CSV','cp-referrer-and-conversions-tracking'); ?>" class="button" style="float:right;margin-left:10px;">
+			<input type="submit" name="ds" value="<?php esc_attr_e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="float:right;">
 		</nobr>
        </form>
 	</div>
@@ -147,26 +147,26 @@ $form = array();
 
 <div class="ahb-statssection-container" style="background:#f6f6f6;float:left;width:48%;">
 	<div class="ahb-statssection-header">
-		<h3><?php _e('Logs per day','cp-referrer-and-conversions-tracking'); ?></h3>
+		<h3><?php esc_html_e('Logs per day','cp-referrer-and-conversions-tracking'); ?></h3>
 	</div>
 	<div class="ahb-statssection">
         <div class="canvas" id="cardiocontainer1" style="margin-left:10px;position:relative;">
          <canvas id="cardio1"  width="300" height="200" questions='[{"color":"#008ec2","values":[<?php echo htmlentities($daily_messages); ?>]}]'></canvas>
         </div>
-        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php _e('Logs per day in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php _e('Days from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> to <?php echo esc_html($date_end); ?>.</div>
+        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php esc_html_e('Logs per day in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php esc_html_e('Days from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> to <?php echo esc_html($date_end); ?>.</div>
         <div class="clear"></div>
 	</div>
 </div>
 
 <div class="ahb-statssection-container" style="background:#f6f6f6;float:right;width:48%;">
 	<div class="ahb-statssection-header">
-		<h3><?php _e('Logs per hour','cp-referrer-and-conversions-tracking'); ?></h3>
+		<h3><?php esc_html_e('Logs per hour','cp-referrer-and-conversions-tracking'); ?></h3>
 	</div>
 	<div class="ahb-statssection" >
 		<div class="canvas" id="cardiocontainer2" style="margin-left:10px;position:relative;">
          <canvas id="cardio2"  width="312" height="200" questions='[{"color":"#008ec2","values":[<?php echo esc_html($hourly_messages); ?>]}]'></canvas>
         </div>
-        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php _e('Total logs per hour in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php _e('Hours from 0 to 23','cp-referrer-and-conversions-tracking'); ?>.</div>
+        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php esc_html_e('Total logs per hour in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php esc_html_e('Hours from 0 to 23','cp-referrer-and-conversions-tracking'); ?>.</div>
         <div class="clear"></div>
 	</div>
 </div>
@@ -181,7 +181,7 @@ $form = array();
          <input type="hidden" name="search" value="<?php echo esc_attr($search_value); ?>" />
          <input type="hidden" name="dfrom" value="<?php echo esc_attr($date_start); ?>" />
          <input type="hidden" name="dto" value="<?php echo esc_attr($date_end); ?>" />
-		 <h3><?php _e('Select field for the report','cp-referrer-and-conversions-tracking'); ?>: <select name="field" onchange="document.cfm_formrep.submit();">
+		 <h3><?php esc_html_e('Select field for the report','cp-referrer-and-conversions-tracking'); ?>: <select name="field" onchange="document.cfm_formrep.submit();">
               <?php
                    foreach ($fields as $item => $value)
                        echo '<option value="'.esc_attr($item).'"'.($field_filter==$item?' selected':'').'>'.esc_html($item).'</option>';
@@ -194,7 +194,7 @@ $form = array();
 
         <div style="width:100%;padding:0;background:white;border:1px solid #e6e6e6;">
          <div style="padding:10px;background:#ECECEC;color:#21759B;font-weight: bold;">
-           <?php _e('Report of values for','cp-referrer-and-conversions-tracking'); ?>: <em><?php echo esc_html($field_filter); ?></em>
+           <?php esc_html_e('Report of values for','cp-referrer-and-conversions-tracking'); ?>: <em><?php echo esc_html($field_filter); ?></em>
          </div>
 
         <div style="padding:10px;">
@@ -218,7 +218,7 @@ $form = array();
         ?>
         </div>
 
-         <div style="padding-right:5px;padding-left:5px;margin-bottom:20px;color:#888888;">&nbsp;&nbsp;* <?php _e('Number of times that appears each value. Percent in relation to the total of logs.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp;&nbsp;&nbsp; <?php _e('Date range from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> <?php _e('to','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_end); ?>.</div>
+         <div style="padding-right:5px;padding-left:5px;margin-bottom:20px;color:#888888;">&nbsp;&nbsp;* <?php esc_html_e('Number of times that appears each value. Percent in relation to the total of logs.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp;&nbsp;&nbsp; <?php esc_html_e('Date range from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> <?php esc_html_e('to','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_end); ?>.</div>
         </div>
 
         <div style="clear:both"></div>
@@ -229,8 +229,8 @@ $form = array();
 
 
 <div class="ahb-buttons-container">
-	<input type="button" value="<?php _e('Print Stats','cp-referrer-and-conversions-tracking'); ?>" onclick="do_dexapp_print();" class="button button-primary" />
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
+	<input type="button" value="<?php esc_html_e('Print Stats','cp-referrer-and-conversions-tracking'); ?>" onclick="do_dexapp_print();" class="button button-primary" />
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
 	<div class="clear"></div>
 </div>
 

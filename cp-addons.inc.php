@@ -128,13 +128,13 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 
 <a id="top"></a>
 
-<h1><?php _e('CP Referrer Tracking - Add Ons','cp-referrer-and-conversions-tracking'); ?></h1>
+<h1><?php esc_html_e('CP Referrer Tracking - Add Ons','cp-referrer-and-conversions-tracking'); ?></h1>
 
 <?php if ($message) echo "<div id='setting-error-settings_updated' class='updated' style='margin:0px;'><h2>".esc_html($message)."</h2></div> <br />";
  ?>
 
 <div class="ahb-buttons-container">
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php _e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
 	<div class="clear"></div>
 </div>
 
@@ -143,7 +143,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 <div class="clear"></div>
 
 <!-- Add Ons -->
-<h2><?php _e('Active Add Ons','cp-referrer-and-conversions-tracking'); ?></h2>
+<h2><?php esc_html_e('Active Add Ons','cp-referrer-and-conversions-tracking'); ?></h2>
 <div class="ahb-addons-container">
 	<div class="ahb-addons-group">
 
@@ -161,7 +161,7 @@ $nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 	</div>
 </div>
 
-<div class="ahb-to-top" style="margin-bottom:10px;"><a href="#top">&uarr; <?php _e('Top','cp-referrer-and-conversions-tracking'); ?></a></div>
+<div class="ahb-to-top" style="margin-bottom:10px;"><a href="#top">&uarr; <?php esc_html_e('Top','cp-referrer-and-conversions-tracking'); ?></a></div>
 
 <input type="button" value="Activate/Deactivate Marked Add Ons" onclick="cp_activateAddons();" class="button button-primary ahb-first-button" />
 <div class="clear"></div>
