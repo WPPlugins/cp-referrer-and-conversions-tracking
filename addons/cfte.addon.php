@@ -1,115 +1,138 @@
 <?php
-/**
- * Contact Form to Email Conversion Tracking Add-On.
- */
+/*
+    iCal Import Addon
+*/
+require_once dirname( __FILE__ ).'/base.addon.php';
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+if( !class_exists( 'CPREFTRACK_CFTEForm' ) )
+{
 
-require_once __DIR__ . '/base.addon.php';
+    class CPREFTRACK_CFTEForm extends CPREFTRACK_BaseAddon
+    {
 
-if ( ! class_exists( 'CPREFTRACK_CFTEForm' ) ) {
+        /************* ADDON SYSTEM - ATTRIBUTES AND METHODS *************/
+		protected $addonID = "addon-CFTEForm-20200119";
+		protected $name = "Contact Form to Email Conversion Tracking";
+		protected $description;
+        protected $conversion_submission_indicator = 'Contact Form to Email - Form submission';
+        protected $conversion_details_prefix = 'Submission ID #';
 
-	class CPREFTRACK_CFTEForm extends CPREFTRACK_BaseAddon {
 
-		protected $addonID                         = 'addon-CFTEForm-20200119';
-		protected $name                            = 'Contact Form to Email Conversion Tracking';
-		protected $conversion_submission_indicator = 'Contact Form to Email - Form submission';
-		protected $conversion_details_prefix       = 'Submission ID #';
+		/************************ ADDON CODE *****************************/
 
-		public function __construct() {
-			$this->description = sprintf(
-				/* translators: %s: companion plugin link */
-				 'Enables referrer tracking for conversions in the %s plugin.',
-				$this->build_plugin_info_link( 'contact-form-to-email', 'Contact Form to Email' )
-			);
+        /************************ ATTRIBUTES *****************************/
 
-			add_action( 'init', array( $this, 'check_active' ), 10 );
 
-			if ( ! $this->addon_is_active() ) {
-				return;
-			}
+        /************************ CONSTRUCT *****************************/
 
-			add_action( 'cfte_process_data_before_insert', array( $this, 'register_referrer' ), 10, 1 );
-			add_action( 'cfte_process_data', array( $this, 'track_conversion_submission' ), 10, 1 );
-			add_filter( $this->conversion_submission_indicator, array( $this, 'filter_conversion_list' ), 10, 1 );
-		}
+        function __construct()
+        {
+			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;\">Contact Form to Email</a> plugin", 'cp-referrer-and-conversions-tracking' );
+            // Check if the plugin is active
+            
+            add_action( 'init', array( &$this, 'check_active' ), 10, 1 );
 
-		public function get_status() {
-			global $cp_cfte_plugin;
-			if ( is_object( $cp_cfte_plugin ) ) {
-				return 'active';
-			}
-			return $this->is_plugin_installed( 'contact-form-to-email/form-to-email.php' ) ? 'inactive' : 'not_installed';
-		}
+			if( !$this->addon_is_active() ) return;
 
-		public function check_active() {
-			global $cp_cfte_plugin;
-			$this->maybe_auto_activate( is_object( $cp_cfte_plugin ) );
-		}
+			add_action( 'cfte_process_data_before_insert', array( &$this, 'register_referrer' ), 10, 1 );
 
-		public function get_addon_settings() {
-			global $cp_cfte_plugin;
-			return $this->render_dependency_notice(
-				is_object( $cp_cfte_plugin ),
-				'Contact Form to Email',
-				'contact-form-to-email',
-				'contact-form-to-email/form-to-email.php'
-			);
-		}
+            add_action( 'cfte_process_data', array( &$this, 'track_conversion_submission' ), 10, 1 );
 
-		public function register_referrer( &$params ) {
-			if ( ! is_array( $params ) ) {
-				return;
-			}
-			$params['referrer_url']        = apply_filters( 'cpreftrack_referrer', '' );
-			$params['referrer_url_latest'] = $this->get_latest_referrer_cookie();
-		}
+            add_filter( $this->conversion_submission_indicator, array( &$this, 'filter_conversion_list' ), 10, 1 );
 
-		public function track_conversion_submission( $params ) {
-			$itemnumber = ( is_array( $params ) && isset( $params['itemnumber'] ) ) ? sanitize_text_field( (string) $params['itemnumber'] ) : '';
-			do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix . $itemnumber );
-		}
+            // filter en post
 
-		public function filter_conversion_list( $param_registered ) {
-			global $wpdb, $cp_cfte_plugin;
-			if ( ! is_object( $cp_cfte_plugin ) || empty( $cp_cfte_plugin->table_messages ) ) {
-				return esc_html( (string) $param_registered );
-			}
 
-			$inum   = absint( str_replace( $this->conversion_details_prefix, '', (string) $param_registered ) );
-			$table  = $wpdb->prefix . $cp_cfte_plugin->table_messages;
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$myrows = $wpdb->get_results( $wpdb->prepare( "SELECT notifyto FROM `{$table}` WHERE id = %d LIMIT 1", $inum ) );
+        } // End __construct
 
-			if ( ! empty( $myrows ) ) {
-				$email = sanitize_email( (string) $myrows[0]->notifyto );
-				$url   = add_query_arg(
-					array(
-						'page'   => 'cp_contactformtoemail',
-						'cal'    => '0',
-						'list'   => '1',
-						'search' => $email,
-						'ds'     => 'Filter',
-					),
-					admin_url( 'admin.php' )
-				);
 
-				return sprintf(
-					'<span class="cprt-nowrap">%1$s</span><br /><strong>%2$s</strong> <a href="%3$s" class="cprt-link">%4$s</a>',
-					esc_html( (string) $param_registered ),
-					esc_html__( 'Email:', 'cp-referrer-and-conversions-tracking' ),
-					esc_url( $url ),
-					esc_html( $email )
-				);
-			}
 
-			return esc_html( (string) $param_registered );
-		}
-	}
+        /************************ PRIVATE METHODS *****************************/
 
-	$CPREFTRACK_CFTEForm_obj = new CPREFTRACK_CFTEForm();
+
+
+
+
+		/************************ PUBLIC METHODS  *****************************/
+
+
+        public function check_active()
+        {
+            global $cp_cfte_plugin;
+            if (is_object($cp_cfte_plugin) && !$this->addon_is_active())
+            {
+                global $cpreftrack_addons_active_list;
+                $cpreftrack_addons_active_list[] = $this->get_addon_id();
+                update_option( 'cpreftrack_addons_active_list', $cpreftrack_addons_active_list );
+            }
+        }
+        
+
+        public function get_addon_settings()
+        {
+            global $cp_cfte_plugin;
+            if (!is_object($cp_cfte_plugin))
+            {
+                if(!file_exists(dirname(__FILE__).'/../../contact-form-to-email/form-to-email.php'))
+                {
+?>
+            <div class="card h-100" style="background-color: #ffdddd">
+                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
+
+                <input class="button mt-2" type="button" name="calreport_<?php echo intval($item->id); ?>" value="<?php esc_attr_e('Install Contact Form to Email plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=contact-form-to-email&amp;';" />
+            </div>
+<?php
+                }
+                else
+                {
+?>
+            <div class="card h-100" style="background-color: #ffdddd">
+                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin is not active. Please remember to <a href="plugins.php">activate the related plugin</a> to get listed its conversions.</div>
+            </div>
+<?php
+                }
+            }
+        }
+
+
+		public function register_referrer(&$params)
+		{
+            $referrer = apply_filters( 'cpreftrack_referrer', '' );
+            $params["referrer_url"] = $referrer;
+            $params["referrer_url_latest"] = sanitize_text_field($_COOKIE['cprreftracklatest']);
+
+        }
+
+
+		public function track_conversion_submission($params)
+		{
+            do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix.$params["itemnumber"]);
+        }
+
+
+		public function filter_conversion_list($param_registered)
+		{
+            global $wpdb, $cp_cfte_plugin;
+            $inum = intval(str_replace($this->conversion_details_prefix,'',$param_registered));
+            if (!is_object($cp_cfte_plugin))
+                return $param_registered;
+            $inum = intval(str_replace($this->conversion_details_prefix,'',$param_registered));
+            $myrows = $wpdb->get_results( $wpdb->prepare("SELECT * FROM ".$wpdb->prefix.$cp_cfte_plugin->table_messages." WHERE id=%d",$inum) );
+            if (count($myrows))
+            {
+                $param_registered = "<nobr>".$param_registered."</nobr><br /><b><span style=\"color:#FF9415\">Email: <a href=\"?page=cp_contactformtoemail&cal=0&list=1&search=".urlencode($myrows[0]->notifyto)."&dfrom&dto&ds=Filter\">".sanitize_email($myrows[0]->notifyto)."</a></span></b>";
+            }
+
+            return $param_registered;
+        }
+
+
+    } // End Class
+
+    // Main add-on code
+    $CPREFTRACK_CFTEForm_obj = new CPREFTRACK_CFTEForm();
+
+	// Add addon object to the objects list
 	global $cpreftrack_addons_objs_list;
 	$cpreftrack_addons_objs_list[ $CPREFTRACK_CFTEForm_obj->get_addon_id() ] = $CPREFTRACK_CFTEForm_obj;
 }

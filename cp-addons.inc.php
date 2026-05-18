@@ -1,113 +1,167 @@
 <?php
-/**
- * Add-Ons Manager view.
- */
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+if ( !is_admin() ) 
+{
+    echo 'Direct access not allowed.';
+    exit;
 }
 
-$this->require_manage_access();
+global $wpdb, $cpreftrack_addons_active_list, $cpreftrack_addons_objs_list;
 
-global $cpreftrack_addons_active_list, $cpreftrack_addons_objs_list;
+$message = "";
 
-$nonce = wp_create_nonce( 'cpreftrack_actions_addons' );
+if( isset( $_GET[ 'b' ] ) && $_GET[ 'b' ] == 1 )
+{
+    $this->verify_nonce ($_GET["anonce"], 'cpreftrack_actions_list');
+	// Save the option for active addons
+	delete_option( 'cpreftrack_addons_active_list' );
+	if( !empty( $_GET[ 'cpreftrack_addons_active_list' ] ) && is_array( $_GET[ 'cpreftrack_addons_active_list' ] ) ) 
+	{
+        foreach ($_GET[ 'cpreftrack_addons_active_list' ] as $item)
+             $sanitized_list[] = sanitize_text_field($item);
+		update_option( 'cpreftrack_addons_active_list', $sanitized_list );
+	}	
+	
+	// Get the list of active addons
+	$cpreftrack_addons_active_list = get_option( 'cpreftrack_addons_active_list', array() );
+    $message = "Add Ons settings updated";
+}
 
-$status_meta = array(
-	'active'        => array( 'cprt-badge-emerald', __( 'Plugin Active', 'cp-referrer-and-conversions-tracking' ) ),
-	'core'          => array( 'cprt-badge-blue', __( 'WordPress Core', 'cp-referrer-and-conversions-tracking' ) ),
-	'inactive'      => array( 'cprt-badge-amber', __( 'Plugin Inactive', 'cp-referrer-and-conversions-tracking' ) ),
-	'not_installed' => array( 'cprt-badge-muted', __( 'Not Installed', 'cp-referrer-and-conversions-tracking' ) ),
-);
+$nonce = wp_create_nonce( 'cpreftrack_actions_list' );
 
-$allowed_desc_html = array(
-	'a'      => array(
-		'href'   => true,
-		'target' => true,
-		'rel'    => true,
-		'class'  => true,
-	),
-	'strong' => array(),
-	'em'     => array(),
-	'code'   => array(),
-);
-
-$this->render_admin_header(
-	'addons',
-	__( 'Conversion Tracking Add-Ons', 'cp-referrer-and-conversions-tracking' ),
-	__( 'Toggle built-in integrations to automatically attribute orders, form submissions, bookings, and user registrations.', 'cp-referrer-and-conversions-tracking' )
-);
 ?>
+<style>
+	.clear{clear:both;}
+	.ahb-addons-container {
+		border: 1px solid #e6e6e6;
+		padding: 20px;
+		border-radius: 3px;
+		-webkit-box-flex: 1;
+		flex: 1;
+		margin: 1em 1em 1em 0;
+		min-width: 200px;
+		background: white;
+		position:relative;
+	}
+	.ahb-addons-container h2{margin:0 0 20px 0;padding:0;}
+	.ahb-addon{border-bottom: 1px solid #efefef;padding: 10px 0;}
+	.ahb-addon:first-child{border-top: 1px solid #efefef;}
+	.ahb-addon:last-child{border-bottom: 0;}
+	.ahb-addon label{font-weight:600;}
+	.ahb-addon p{font-style:italic;margin:5px 0 0 0;}
+	.ahb-first-button{margin-right:10px !important;}
+    
+    .ahb-buttons-container{margin:1em 1em 1em 0;}
+    .ahb-return-link{float:right;}
 
-<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_addons' ) ); ?>">
-	<input type="hidden" name="anonce" value="<?php echo esc_attr( $nonce ); ?>" />
-	<input type="hidden" name="cpreftrack_save_addons" value="1" />
+	.ahb-disabled-addons {
+		background: #f9f9f9;
+	}
+	.ahb-addons-container h2{margin-left:30px;}
+	.ahb-disabled-addons *{
+		color:#888888;
+	}
+	.ahb-disabled-addons input{
+		pointer-events: none !important;
+	}
 
-	<div class="cprt-toolbar-top">
-		<span class="cprt-text-muted">
-			<?php
-			$total_addons = is_array( $cpreftrack_addons_objs_list ) ? count( $cpreftrack_addons_objs_list ) : 0;
-			printf(
-				/* translators: %d: number of available add-ons */
-				esc_html( _n( '%d integration available.', '%d integrations available.', $total_addons, 'cp-referrer-and-conversions-tracking' ) ),
-				$total_addons
-			);
-			?>
-		</span>
-		<button type="submit" class="cprt-btn cprt-btn-primary">
-			<?php esc_html_e( 'Save Add-On Changes', 'cp-referrer-and-conversions-tracking' ); ?>
-		</button>
+	/** For Ribbon **/
+	.ribbon {
+		position: absolute;
+		left: -5px; top: -5px;
+		z-index: 1;
+		overflow: hidden;
+		width: 75px; height: 75px;
+		text-align: right;
+	}
+	.ribbon span {
+		font-size: 10px;
+		font-weight: bold;
+		color: #FFF;
+		text-transform: uppercase;
+		text-align: center;
+		line-height: 20px;
+		transform: rotate(-45deg);
+		-webkit-transform: rotate(-45deg);
+		width: 100px;
+		display: block;
+		background: #79A70A;
+		background: linear-gradient(#2989d8 0%, #1e5799 100%);
+		box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 1);
+		position: absolute;
+		top: 19px; left: -21px;
+	}
+	.ribbon span::before {
+		content: "";
+		position: absolute; left: 0px; top: 100%;
+		z-index: -1;
+		border-left: 3px solid #1e5799;
+		border-right: 3px solid transparent;
+		border-bottom: 3px solid transparent;
+		border-top: 3px solid #1e5799;
+	}
+	.ribbon span::after {
+		content: "";
+		position: absolute; right: 0px; top: 100%;
+		z-index: -1;
+		border-left: 3px solid transparent;
+		border-right: 3px solid #1e5799;
+		border-bottom: 3px solid transparent;
+		border-top: 3px solid #1e5799;
+	}
+</style>
+
+<script type="text/javascript">
+    
+ function cp_activateAddons()
+ {
+    var cpreftrack_addons = document.getElementsByName("cpreftrack_addons"),
+		cpreftrack_addons_active_list = [];
+	for( var i = 0, h = cpreftrack_addons.length; i < h; i++ )
+	{
+		if( cpreftrack_addons[ i ].checked ) cpreftrack_addons_active_list.push( 'cpreftrack_addons_active_list[]='+encodeURIComponent( cpreftrack_addons[ i ].value ) );
+	}	
+	document.location = 'admin.php?page=<?php echo esc_js($this->menu_parameter); ?>_addons&anonce=<?php echo esc_js($nonce); ?>&b=1&r='+Math.random()+( ( cpreftrack_addons_active_list.length ) ? '&'+cpreftrack_addons_active_list.join( '&' ) : '' )+'#addons-section';
+ }    
+ 
+</script>
+
+<a id="top"></a>
+
+<h1><?php esc_html_e('CP Referrer Tracking - Add Ons','cp-referrer-and-conversions-tracking'); ?></h1>
+
+<?php if ($message) echo "<div id='setting-error-settings_updated' class='updated' style='margin:0px;'><h2>".esc_html($message)."</h2></div> <br />";
+ ?>
+
+<div class="ahb-buttons-container">
+	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
+	<div class="clear"></div>
+</div>
+
+
+<input type="button" value="Activate/Deactivate Marked Add Ons" onclick="cp_activateAddons();" class="button button-primary ahb-first-button" />
+<div class="clear"></div>
+
+<!-- Add Ons -->
+<h2><?php esc_html_e('Active Add Ons','cp-referrer-and-conversions-tracking'); ?></h2>
+<div class="ahb-addons-container">
+	<div class="ahb-addons-group">
+
+	<?php
+    $i=0;
+	foreach( $cpreftrack_addons_objs_list as $key => $obj )
+	{
+		print '<div class="ahb-addon" style="border:0;width:50%;float:left;"><label><input type="checkbox" id="'.$key.'" name="cpreftrack_addons" value="'.$key.'" '.( ( $obj->addon_is_active() ) ? 'CHECKED' : '' ).'>'.$obj->get_addon_name().'</label><p>'.$obj->get_addon_description().'</p></div>';
+        $i++;
+        if (!($i%2)) echo '<div class="clear"></div>';
+	}
+    if ($i == 0) echo __('No add-ons registered so far.','cp-referrer-and-conversions-tracking');
+	?>    
+    <div class="clear"></div>
 	</div>
+</div>
 
-	<?php if ( empty( $cpreftrack_addons_objs_list ) ) : ?>
-		<section class="cprt-card">
-			<div class="cprt-card-body">
-				<p class="cprt-empty-state"><?php esc_html_e( 'No add-ons registered so far.', 'cp-referrer-and-conversions-tracking' ); ?></p>
-			</div>
-		</section>
-	<?php else : ?>
-		<div class="cprt-addons-grid">
-			<?php foreach ( $cpreftrack_addons_objs_list as $key => $obj ) : ?>
-				<?php
-				$is_enabled = $obj->addon_is_active();
-				$status_key = method_exists( $obj, 'get_status' ) ? $obj->get_status() : 'not_installed';
-				$badge_cls  = isset( $status_meta[ $status_key ] ) ? $status_meta[ $status_key ][0] : 'cprt-badge-muted';
-				$badge_txt  = isset( $status_meta[ $status_key ] ) ? $status_meta[ $status_key ][1] : __( 'Available', 'cp-referrer-and-conversions-tracking' );
-				$input_id   = 'cprt-addon-' . sanitize_html_class( $key );
-				?>
-				<div class="cprt-addon-card <?php echo $is_enabled ? 'is-enabled' : ''; ?>">
-					<div class="cprt-addon-header">
-						<div>
-							<label for="<?php echo esc_attr( $input_id ); ?>" class="cprt-addon-title">
-								<?php echo esc_html( $obj->get_addon_name() ); ?>
-							</label>
-							<div class="cprt-addon-badges">
-								<span class="cprt-badge <?php echo esc_attr( $badge_cls ); ?>"><?php echo esc_html( $badge_txt ); ?></span>
-							</div>
-						</div>
-						<label class="cprt-switch">
-							<input type="checkbox"
-								   id="<?php echo esc_attr( $input_id ); ?>"
-								   name="cpreftrack_addons_active_list[]"
-								   value="<?php echo esc_attr( $key ); ?>"
-								   <?php checked( $is_enabled ); ?> />
-							<span class="cprt-switch-slider"></span>
-						</label>
-					</div>
-					<p class="cprt-addon-desc">
-						<?php echo wp_kses( $obj->get_addon_description(), $allowed_desc_html ); ?>
-					</p>
-				</div>
-			<?php endforeach; ?>
-		</div>
+<div class="ahb-to-top" style="margin-bottom:10px;"><a href="#top">&uarr; <?php esc_html_e('Top','cp-referrer-and-conversions-tracking'); ?></a></div>
 
-		<div class="cprt-form-footer">
-			<button type="submit" class="cprt-btn cprt-btn-primary">
-				<?php esc_html_e( 'Save Add-On Changes', 'cp-referrer-and-conversions-tracking' ); ?>
-			</button>
-		</div>
-	<?php endif; ?>
-</form>
-
-<?php
-$this->render_admin_footer();
+<input type="button" value="Activate/Deactivate Marked Add Ons" onclick="cp_activateAddons();" class="button button-primary ahb-first-button" />
+<div class="clear"></div>
