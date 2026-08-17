@@ -3,7 +3,7 @@
 Plugin Name: CP Referrer and Conversion Tracking
 Plugin URI: http://wordpress.dwbooster.com/
 Description: Tracking for referrer websites and conversions.
-Version: 1.01.29
+Version: 1.01.30
 Author: CodePeople
 Author URI: http://wordpress.dwbooster.com/support
 License: GPLv2
