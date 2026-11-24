@@ -1,103 +1,149 @@
 <?php
-/*
-    iCal Import Addon
-*/
-require_once dirname( __FILE__ ).'/base.addon.php';
+/**
+ * WooCommerce Conversion Tracking Add-On (HPOS & Classic Order Storage compatible).
+ */
 
-if( !class_exists( 'CPREFTRACK_WooCommerce' ) )
-{
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-    class CPREFTRACK_WooCommerce extends CPREFTRACK_BaseAddon
-    {
+require_once __DIR__ . '/base.addon.php';
 
-        /************* ADDON SYSTEM - ATTRIBUTES AND METHODS *************/
-		protected $addonID = "addon-WooCommerce-20200119";
-		protected $name = "WooCommerce Conversion Tracking";
-		protected $description;
-        protected $conversion_submission_indicator = 'WooCommerce - Order Placed';
-        protected $conversion_details_prefix = 'Order ID #';
+if ( ! class_exists( 'CPREFTRACK_WooCommerce' ) ) {
 
+	class CPREFTRACK_WooCommerce extends CPREFTRACK_BaseAddon {
 
-		/************************ ADDON CODE *****************************/
+		protected $addonID                         = 'addon-WooCommerce-20200119';
+		protected $name                            = 'WooCommerce Conversion Tracking';
+		protected $conversion_submission_indicator = 'WooCommerce - Order Placed';
+		protected $conversion_details_prefix       = 'Order ID #';
 
-        /************************ ATTRIBUTES *****************************/
+		public function __construct() {
+			$this->description = sprintf(
+				/* translators: %s: companion plugin link */
+				__( 'Enables referrer tracking for orders placed in %s (supports HPOS and classic orders).', 'cp-referrer-and-conversions-tracking' ),
+				$this->build_plugin_info_link( 'woocommerce', 'WooCommerce' )
+			);
 
+			if ( ! $this->addon_is_active() ) {
+				return;
+			}
 
-        /************************ CONSTRUCT *****************************/
+			add_action( 'woocommerce_admin_order_data_after_billing_address', array( $this, 'my_custom_checkout_field_display_admin_order_meta' ), 10, 1 );
+			add_action( 'woocommerce_new_order', array( $this, 'track_conversion_submission' ), 10, 1 );
+			add_filter( $this->conversion_submission_indicator, array( $this, 'filter_conversion_list' ), 10, 1 );
+		}
 
-        function __construct()
-        {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <strong>WooCommerce</strong> plugin", 'cp-referrer-and-conversions-tracking' );
-            // Check if the plugin is active
+		public function get_status() {
+			if ( class_exists( 'WooCommerce' ) ) {
+				return 'active';
+			}
+			return $this->is_plugin_installed( 'woocommerce/woocommerce.php' ) ? 'inactive' : 'not_installed';
+		}
 
-			if( !$this->addon_is_active() ) return;
+		public function get_addon_settings() {
+			return $this->render_dependency_notice(
+				class_exists( 'WooCommerce' ),
+				'WooCommerce',
+				'woocommerce',
+				'woocommerce/woocommerce.php'
+			);
+		}
 
-			add_action( 'cpappb_process_data_before_insert', array( &$this, 'register_referrer' ), 10, 1);
+		/**
+		 * Display the recorded referrer inside the WooCommerce order admin screen.
+		 *
+		 * @param WC_Order $order Order object.
+		 */
+		public function my_custom_checkout_field_display_admin_order_meta( $order ) {
+			if ( ! is_object( $order ) || ! method_exists( $order, 'get_id' ) ) {
+				return;
+			}
 
-            add_action( 'woocommerce_admin_order_data_after_billing_address', array( &$this, 'my_custom_checkout_field_display_admin_order_meta' ), 10, 1 );
+			$referrer = '';
+			if ( method_exists( $order, 'get_meta' ) ) {
+				$referrer = (string) $order->get_meta( 'cpreftrack_woocommerce_referrer', true );
+			}
+			if ( '' === $referrer ) {
+				$referrer = (string) get_post_meta( $order->get_id(), 'cpreftrack_woocommerce_referrer', true );
+			}
 
-            add_action( 'woocommerce_new_order', array( &$this, 'track_conversion_submission' ), 10, 1 );
+			$conv_url = admin_url( 'admin.php?page=cp_reftrack_conversions' );
+			echo '<p><strong><a href="' . esc_url( $conv_url ) . '">' . esc_html__( 'Referrer', 'cp-referrer-and-conversions-tracking' ) . '</a>:</strong><br />';
+			if ( '' !== $referrer ) {
+				echo esc_html( $referrer );
+			} else {
+				echo esc_html__( 'Direct / Unknown', 'cp-referrer-and-conversions-tracking' );
+			}
+			echo '</p>';
+		}
 
-            add_filter( $this->conversion_submission_indicator, array( &$this, 'filter_conversion_list' ), 10, 1 );
+		/**
+		 * Store referrer on new WooCommerce orders using HPOS-safe CRUD API.
+		 *
+		 * @param int $order_id WooCommerce Order ID.
+		 */
+		public function track_conversion_submission( $order_id ) {
+			$order_id = absint( $order_id );
+			if ( $order_id <= 0 ) {
+				return;
+			}
 
-            // filter en post
+			$referrer = sanitize_text_field( (string) apply_filters( 'cpreftrack_referrer', '' ) );
 
+			if ( function_exists( 'wc_get_order' ) ) {
+				$order = wc_get_order( $order_id );
+				if ( $order && method_exists( $order, 'update_meta_data' ) ) {
+					$order->update_meta_data( 'cpreftrack_woocommerce_referrer', $referrer );
+					$order->save_meta_data();
+				}
+			} else {
+				update_post_meta( $order_id, 'cpreftrack_woocommerce_referrer', $referrer );
+			}
 
-        } // End __construct
+			do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix . $order_id );
+		}
 
+		/**
+		 * Link order conversion entries to the HPOS-compatible edit order URL.
+		 *
+		 * @param string $param_registered Stored conversion detail string.
+		 * @return string
+		 */
+		public function filter_conversion_list( $param_registered ) {
+			$inum     = absint( str_replace( $this->conversion_details_prefix, '', (string) $param_registered ) );
+			$edit_url = '';
 
+			if ( $inum > 0 && function_exists( 'wc_get_order' ) ) {
+				$order = wc_get_order( $inum );
+				if ( $order && method_exists( $order, 'get_edit_order_url' ) ) {
+					$edit_url = (string) $order->get_edit_order_url();
+				}
+			}
 
-        /************************ PRIVATE METHODS *****************************/
+			if ( '' === $edit_url && $inum > 0 ) {
+				$edit_url = add_query_arg(
+					array(
+						'post'   => $inum,
+						'action' => 'edit',
+					),
+					admin_url( 'post.php' )
+				);
+			}
 
+			if ( '' !== $edit_url ) {
+				return sprintf(
+					'<a href="%1$s" class="cprt-link cprt-nowrap">%2$s</a>',
+					esc_url( $edit_url ),
+					esc_html( (string) $param_registered )
+				);
+			}
 
+			return esc_html( (string) $param_registered );
+		}
+	}
 
-
-
-		/************************ PUBLIC METHODS  *****************************/
-
-
-
-        public function get_addon_settings()
-        {
-            global $cp_appb_plugin;
-            // no code needed here
-        }
-
-
-		public function register_referrer(&$params)
-		{
-            // no code needed here
-        }
-        
-
-		public function my_custom_checkout_field_display_admin_order_meta($order)
-        {
-            echo '<p><strong><a href="admin.php?page=cp_reftrack_conversions">'.__('Referrer','cp-referrer-and-conversions-tracking').'</a>:</strong> <br/>' . get_post_meta( $order->get_id(), 'cpreftrack_woocommerce_referrer', true ) . '</p>';
-        }
-
-		public function track_conversion_submission($order_id)
-		{
-            $referrer = apply_filters( 'cpreftrack_referrer', '' );
-            update_post_meta($order_id, 'cpreftrack_woocommerce_referrer', esc_attr(htmlspecialchars($referrer)));
-            do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix.$order_id);
-        }
-
-
-		public function filter_conversion_list($param_registered)
-		{
-            global $wpdb;            
-            $inum = intval(str_replace($this->conversion_details_prefix,'',$param_registered));
-            $param_registered = "<nobr><a href=\"post.php?post=".$inum ."&action=edit\">".$param_registered."</a></nobr>";
-            return $param_registered;
-        }
-
-
-    } // End Class
-
-    // Main add-on code
-    $CPREFTRACK_WooCommerce_obj = new CPREFTRACK_WooCommerce();
-
-	// Add addon object to the objects list
+	$CPREFTRACK_WooCommerce_obj = new CPREFTRACK_WooCommerce();
 	global $cpreftrack_addons_objs_list;
 	$cpreftrack_addons_objs_list[ $CPREFTRACK_WooCommerce_obj->get_addon_id() ] = $CPREFTRACK_WooCommerce_obj;
 }

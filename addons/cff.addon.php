@@ -1,100 +1,74 @@
 <?php
-/*
-    iCal Import Addon
-*/
-require_once dirname( __FILE__ ).'/base.addon.php';
+/**
+ * Calculated Fields Form Conversion Tracking Add-On.
+ */
 
-if( !class_exists( 'CPREFTRACK_CalculatedFieldsForm' ) )
-{
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-    class CPREFTRACK_CalculatedFieldsForm extends CPREFTRACK_BaseAddon
-    {
+require_once __DIR__ . '/base.addon.php';
 
-        /************* ADDON SYSTEM - ATTRIBUTES AND METHODS *************/
-		protected $addonID = "addon-CalculatedFieldsForm-20200119";
-		protected $name = "Calculated Fields Form Conversion Tracking";
-		protected $description;
-        protected $conversion_submission_indicator = 'Calculated Field Form - Form submission';
-        protected $conversion_details_prefix = 'Submission ID #';
+if ( ! class_exists( 'CPREFTRACK_CalculatedFieldsForm' ) ) {
 
+	class CPREFTRACK_CalculatedFieldsForm extends CPREFTRACK_BaseAddon {
 
-		/************************ ADDON CODE *****************************/
+		protected $addonID                         = 'addon-CalculatedFieldsForm-20200119';
+		protected $name                            = 'Calculated Fields Form Conversion Tracking';
+		protected $conversion_submission_indicator = 'Calculated Field Form - Form submission';
+		protected $conversion_details_prefix       = 'Submission ID #';
 
-        /************************ ATTRIBUTES *****************************/
+		public function __construct() {
+			$this->description = sprintf(
+				/* translators: %s: companion plugin link */
+				__( 'Enables referrer tracking for conversions in the %s plugin.', 'cp-referrer-and-conversions-tracking' ),
+				$this->build_plugin_info_link( 'calculated-fields-form', 'Calculated Fields Form' )
+			);
 
+			if ( ! $this->addon_is_active() ) {
+				return;
+			}
 
-        /************************ CONSTRUCT *****************************/
+			add_action( 'cpcff_process_data_before_insert', array( $this, 'register_referrer' ), 10, 3 );
+			add_action( 'cpcff_process_data', array( $this, 'track_conversion_submission' ), 10, 1 );
+			add_filter( $this->conversion_submission_indicator, array( $this, 'filter_conversion_list' ), 10, 1 );
+		}
 
-        function __construct()
-        {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=calculated-fields-form&amp;\">Calculated Fields Form</a> plugin", 'cp-referrer-and-conversions-tracking' );
-            // Check if the plugin is active
-            
-            //$this->check_active();
+		public function get_status() {
+			if ( defined( 'CP_CALCULATEDFIELDSF_VERSION' ) ) {
+				return 'active';
+			}
+			return $this->is_plugin_installed( 'calculated-fields-form/cp_calculatedfieldsf.php' ) ? 'inactive' : 'not_installed';
+		}
 
-			if( !$this->addon_is_active() ) return;
+		public function get_addon_settings() {
+			return $this->render_dependency_notice(
+				defined( 'CP_CALCULATEDFIELDSF_VERSION' ),
+				'Calculated Fields Form',
+				'calculated-fields-form',
+				'calculated-fields-form/cp_calculatedfieldsf.php'
+			);
+		}
 
-			add_action( 'cpcff_process_data_before_insert', array( &$this, 'register_referrer' ), 10, 3 );
+		public function register_referrer( &$params, &$str = '', $fields = array() ) {
+			if ( ! is_array( $params ) ) {
+				return;
+			}
+			$params['referrer_url']        = apply_filters( 'cpreftrack_referrer', '' );
+			$params['referrer_url_latest'] = $this->get_latest_referrer_cookie();
+		}
 
-            add_action( 'cpcff_process_data', array( &$this, 'track_conversion_submission' ), 10, 1 );
+		public function track_conversion_submission( $params ) {
+			$itemnumber = ( is_array( $params ) && isset( $params['itemnumber'] ) ) ? sanitize_text_field( (string) $params['itemnumber'] ) : '';
+			do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix . $itemnumber );
+		}
 
-            add_filter( $this->conversion_submission_indicator, array( &$this, 'filter_conversion_list' ), 10, 1 );
+		public function filter_conversion_list( $param_registered ) {
+			return esc_html( (string) $param_registered );
+		}
+	}
 
-            // filter en post
-
-
-        } // End __construct
-
-
-
-        /************************ PRIVATE METHODS *****************************/
-
-
-
-
-
-		/************************ PUBLIC METHODS  *****************************/
-
-
-
-        public function get_addon_settings()
-        {
-            // check here if the CFF is not installed and provide link to install... check other addons for sample
-        }
-
-
-		public function register_referrer(&$params, &$str, $fields )
-		{
-            $referrer = apply_filters( 'cpreftrack_referrer', '' );
-            $params["referrer_url"] = $referrer;
-            $params["referrer_url_latest"] = sanitize_text_field($_COOKIE['cprreftracklatest']);
-        }
-
-
-		public function track_conversion_submission($params)
-		{
-            do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix.$params["itemnumber"]);
-        }
-
-
-		public function filter_conversion_list($param_registered)
-		{
-            global $wpdb;
-            $inum = intval(str_replace($this->conversion_details_prefix,'',$param_registered));
-
-            // check here if CFF is active and add a link to the submissions list or something like that
-
-            return $param_registered;
-        }
-
-
-
-    } // End Class
-
-    // Main add-on code
-    $CPREFTRACK_CalculatedFieldsForm_obj = new CPREFTRACK_CalculatedFieldsForm();
-
-	// Add addon object to the objects list
+	$CPREFTRACK_CalculatedFieldsForm_obj = new CPREFTRACK_CalculatedFieldsForm();
 	global $cpreftrack_addons_objs_list;
 	$cpreftrack_addons_objs_list[ $CPREFTRACK_CalculatedFieldsForm_obj->get_addon_id() ] = $CPREFTRACK_CalculatedFieldsForm_obj;
 }

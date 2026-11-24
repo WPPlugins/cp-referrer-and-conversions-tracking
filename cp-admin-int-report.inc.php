@@ -1,352 +1,301 @@
 <?php
+/**
+ * Tracking Stats & Analytics view.
+ */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+$this->require_manage_access();
 
 global $wpdb;
 
-$this->item = 1; //intval($_GET["cal"]);
+$this->item   = 1;
+$search_value = $this->get_get_param( 'search' );
+$date_start   = $this->validate_date( $this->get_get_param( 'dfrom' ) );
+$date_end     = $this->validate_date( $this->get_get_param( 'dto' ) );
 
-$current_user = wp_get_current_user();
-$current_user_access = current_user_can('edit_pages');
+$table  = $wpdb->prefix . $this->table_messages;
+$filter = $this->build_logs_where( $search_value, $date_start, $date_end );
 
-if ( !is_admin() || !$current_user_access )
-{
-    echo 'Direct access not allowed.';
-    exit;
+// 1. Total matching logs & min/max date bounds.
+$summary_sql = "SELECT COUNT(*) AS total_logs, MIN(DATE(`time`)) AS min_date, MAX(DATE(`time`)) AS max_date FROM `{$table}` WHERE {$filter['where']}";
+if ( ! empty( $filter['params'] ) ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$summary_sql = $wpdb->prepare( $summary_sql, $filter['params'] );
+}
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$summary    = $wpdb->get_row( $summary_sql );
+$total_logs = $summary ? (int) $summary->total_logs : 0;
+
+if ( '' === $date_start && $summary && ! empty( $summary->min_date ) ) {
+	$date_start = $this->validate_date( $summary->min_date );
+}
+if ( '' === $date_end && $summary && ! empty( $summary->max_date ) ) {
+	$date_end = $this->validate_date( $summary->max_date );
 }
 
-
-if ( !is_admin() )
-{
-    echo 'Direct access not allowed.';
-    exit;
+// 2. Daily counts via SQL GROUP BY.
+$daily_sql = "SELECT DATE(`time`) AS day_key, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY day_key ORDER BY day_key ASC";
+if ( ! empty( $filter['params'] ) ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$daily_sql = $wpdb->prepare( $daily_sql, $filter['params'] );
+}
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$daily_rows = $wpdb->get_results( $daily_sql );
+$daily_map  = array();
+if ( is_array( $daily_rows ) ) {
+	foreach ( $daily_rows as $r ) {
+		$daily_map[ (string) $r->day_key ] = (int) $r->total;
+	}
 }
 
-
-$current_page = (isset($_GET["p"]) ? intval($_GET["p"]) : 1);
-if (!$current_page) $current_page = 1;
-$records_per_page = 50;
-
-$date_start = '';
-$date_end = '';
-$search_value = '';
-
-$cond = '';
-if (isset($_GET["search"]) && $_GET["search"] != '') 
-{
-    $search_value = sanitize_text_field($_GET["search"]);
-    $cond .= " AND (data like '%".esc_sql($search_value)."%' OR referrer LIKE '%".esc_sql($search_value)."%')";
-}   
-
-if (isset($_GET["dfrom"]) && $_GET["dfrom"] != '')
-{
-    $date_start = sanitize_text_field($_GET["dfrom"]);
-    $cond .= " AND (`time` >= '".esc_sql($date_start)."')";
+// Build continuous daily series safely (capped at 366 days to prevent unbounded loops).
+$daily_labels = array();
+$daily_values = array();
+if ( '' !== $date_start && '' !== $date_end && $date_start <= $date_end ) {
+	$start_ts = strtotime( $date_start );
+	$end_ts   = strtotime( $date_end );
+	if ( false !== $start_ts && false !== $end_ts ) {
+		$max_span_ts = strtotime( '+365 days', $start_ts );
+		if ( $end_ts > $max_span_ts ) {
+			$start_ts = strtotime( '-365 days', $end_ts );
+		}
+		$cursor = $start_ts;
+		$guard  = 0;
+		while ( $cursor <= $end_ts && $guard < 370 ) {
+			$d_key          = gmdate( 'Y-m-d', $cursor );
+			$daily_labels[] = $d_key;
+			$daily_values[] = isset( $daily_map[ $d_key ] ) ? $daily_map[ $d_key ] : 0;
+			$cursor         = strtotime( '+1 day', $cursor );
+			$guard++;
+		}
+	}
 }
 
-if (isset($_GET["dto"]) && $_GET["dto"] != '')
-{
-    $date_end = sanitize_text_field($_GET["dto"]);
-    $cond .= " AND (`time` <= '".esc_sql($date_end)." 23:59:59')";
+// 3. Hourly counts (0-23) via SQL GROUP BY.
+$hourly_sql = "SELECT HOUR(`time`) AS hour_key, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY hour_key";
+if ( ! empty( $filter['params'] ) ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$hourly_sql = $wpdb->prepare( $hourly_sql, $filter['params'] );
+}
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$hourly_rows = $wpdb->get_results( $hourly_sql );
+$hourly_map  = array();
+if ( is_array( $hourly_rows ) ) {
+	foreach ( $hourly_rows as $r ) {
+		$hourly_map[ (int) $r->hour_key ] = (int) $r->total;
+	}
+}
+$hourly_labels = array();
+$hourly_values = array();
+for ( $h = 0; $h <= 23; $h++ ) {
+	$hourly_labels[] = sprintf( '%02d:00', $h );
+	$hourly_values[] = isset( $hourly_map[ $h ] ) ? $hourly_map[ $h ] : 0;
 }
 
-$events = $wpdb->get_results( "SELECT * FROM ".$wpdb->prefix.$this->table_messages." WHERE 1=1 ".$cond." ORDER BY `time` DESC" );
+// 4. Breakdown dimension selector (allowlisted).
+$allowed_fields = array(
+	'referrer' => __( 'Referrer', 'cp-referrer-and-conversions-tracking' ),
+	'date'     => __( 'Date', 'cp-referrer-and-conversions-tracking' ),
+	'hour'     => __( 'Hour of Day', 'cp-referrer-and-conversions-tracking' ),
+	'ip'       => __( 'Visitor ID / IP', 'cp-referrer-and-conversions-tracking' ),
+);
+$raw_field    = $this->get_get_param( 'field', 'referrer' );
+$field_filter = array_key_exists( $raw_field, $allowed_fields ) ? $raw_field : 'referrer';
 
-// general initialization
-$fields = array();
-$fields["referrer"] = array();
-$fields["time"] = array();
-$fields["date"] = array();
-$fields["ip"] = array();
-
-foreach ($events as $item)
-{
-    if (!isset($fields["referrer"]["k".$item->referrer])) $fields["referrer"]["k".$item->referrer] = 0;
-    if (!isset($fields["date"]["k".substr($item->time,0,10)])) $fields["date"]["k".substr($item->time,0,10)] = 0;
-    if (!isset($fields["time"]["k".substr($item->time,11,2)])) $fields["time"]["k".substr($item->time,11,2)] = 0;
-    if (isset($item->ipaddr) && !isset($fields["ip"]["k".$item->ipaddr])) $fields["ip"]["k".$item->ipaddr] = 0;
-    
-    $fields["referrer"]["k".$item->referrer]++;
-    $fields["date"]["k".substr($item->time,0,10)]++;
-    $fields["time"]["k".substr($item->time,11,2)]++;
-    if (isset($item->ipaddr)) $fields["ip"]["k".$item->ipaddr]++;
-    if (isset($item->posted_data))
-    {
-        $params = unserialize($item->posted_data);
-        foreach ($params as $param => $value)
-            if (strlen($value) < 100)
-                $fields[$param]["k".$value]++;
-    }
+$breakdown_rows = array();
+if ( 'referrer' === $field_filter ) {
+	$b_sql = "SELECT referrer AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY referrer ORDER BY total DESC LIMIT 50";
+} elseif ( 'date' === $field_filter ) {
+	$b_sql = "SELECT DATE(`time`) AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 50";
+} elseif ( 'hour' === $field_filter ) {
+	$b_sql = "SELECT LPAD(HOUR(`time`), 2, '0') AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 24";
+} else {
+	$b_sql = "SELECT id AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY id ORDER BY total DESC LIMIT 50";
 }
 
-
-// line graphs
-$hourly_messages = '';
-for ($i=0;$i<=23;$i++)
-    if (isset($fields['time']['k'.($i<10?'0':'').$i]))
-        $hourly_messages .= $fields['time']['k'.($i<10?'0':'').$i].($i<23?',':'');
-    else
-        $hourly_messages .='0'.($i<23?',':'');
-
-if ($date_start == '' && is_array($fields["date"]) && count($fields["date"]))
-    $date_start = substr(min(array_keys($fields["date"])),1);
-if ($date_end == '' && is_array($fields["date"]) && count($fields["date"]))
-    $date_end = substr(max(array_keys($fields["date"])),1);
-
-$daily_messages = '';
-$date = $date_start;
-while ($date <= $date_end)
-{
-    if (isset($fields['date']['k'.$date]))
-        $daily_messages .= ','.$fields['date']['k'.$date];
-    else
-        $daily_messages .=',0';
-    $date = date("Y-m-d",strtotime($date." +1 day"));
+if ( ! empty( $filter['params'] ) ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$b_sql = $wpdb->prepare( $b_sql, $filter['params'] );
 }
-$daily_messages = substr($daily_messages,1);
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$breakdown_rows = $wpdb->get_results( $b_sql );
 
-if (!isset($_GET["field"])) 
-    $field_filter = 'referrer';
-else
-    $field_filter = sanitize_key($_GET["field"]);
+$csv_nonce = wp_create_nonce( 'cpreftrack_export_csv' );
+$csv_url   = add_query_arg(
+	array(
+		'page'                 => $this->menu_parameter . '_report',
+		$this->prefix . '_csv' => '1',
+		'_cprt_csv_nonce'      => $csv_nonce,
+		'search'               => $search_value,
+		'dfrom'                => $date_start,
+		'dto'                  => $date_end,
+	),
+	admin_url( 'admin.php' )
+);
 
-$color_array = array('ffb3ba','ffdfba','ffffba', 'baffc9', 'bae1ff', 'a8e6cf', 'dcedc1', 'ffd3b6', 'ffaaa5', 'ff8b94', 'eea990', 'adcbe3', 'e2f4c7');
+$daily_chart_payload = wp_json_encode(
+	array(
+		'type'   => 'line',
+		'color'  => '#2563eb',
+		'labels' => $daily_labels,
+		'values' => $daily_values,
+	)
+);
 
+$hourly_chart_payload = wp_json_encode(
+	array(
+		'type'   => 'bar',
+		'color'  => '#0ea5e9',
+		'labels' => $hourly_labels,
+		'values' => $hourly_values,
+	)
+);
 
-$form = array();
+$bar_palette = array( '#2563eb', '#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6', '#6366f1' );
 
+$this->render_admin_header(
+	'stats',
+	__( 'Tracking Stats & Analytics', 'cp-referrer-and-conversions-tracking' ),
+	/* translators: %s: total logs matching filters */
+	sprintf( __( 'Analyzing %s referral logs in the selected view.', 'cp-referrer-and-conversions-tracking' ), number_format_i18n( $total_logs ) )
+);
+
+require_once CPREFTRACK_PLUGIN_DIR . 'cp-full-stats.inc.php';
 ?>
 
-<h1><?php esc_html_e('Stats','cp-referrer-and-conversions-tracking'); ?></h1>
+<section class="cprt-card cprt-no-print">
+	<div class="cprt-card-body">
+		<form action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" method="get" class="cprt-filter-bar">
+			<input type="hidden" name="page" value="<?php echo esc_attr( $this->menu_parameter ); ?>_report" />
+			<input type="hidden" name="field" value="<?php echo esc_attr( $field_filter ); ?>" />
 
-<div class="ahb-buttons-container">
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
-	<div class="clear"></div>
+			<div class="cprt-field cprt-field-grow">
+				<label for="cprt-rep-search"><?php esc_html_e( 'Search', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="search" id="cprt-rep-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Filter analytics by referrer or entry...', 'cp-referrer-and-conversions-tracking' ); ?>" />
+			</div>
+
+			<div class="cprt-field">
+				<label for="cprt-rep-from"><?php esc_html_e( 'From', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="date" id="cprt-rep-from" name="dfrom" value="<?php echo esc_attr( $date_start ); ?>" />
+			</div>
+
+			<div class="cprt-field">
+				<label for="cprt-rep-to"><?php esc_html_e( 'To', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="date" id="cprt-rep-to" name="dto" value="<?php echo esc_attr( $date_end ); ?>" />
+			</div>
+
+			<div class="cprt-filter-actions">
+				<button type="submit" class="cprt-btn cprt-btn-primary"><?php esc_html_e( 'Filter', 'cp-referrer-and-conversions-tracking' ); ?></button>
+				<?php if ( '' !== $search_value || '' !== $this->get_get_param( 'dfrom' ) || '' !== $this->get_get_param( 'dto' ) ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_report' ) ); ?>" class="cprt-btn cprt-btn-ghost"><?php esc_html_e( 'Reset', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<?php endif; ?>
+				<a href="<?php echo esc_url( $csv_url ); ?>" class="cprt-btn cprt-btn-secondary"><?php esc_html_e( 'Export CSV', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<button type="button" class="cprt-btn cprt-btn-secondary" data-cprt-print><?php esc_html_e( 'Print', 'cp-referrer-and-conversions-tracking' ); ?></button>
+			</div>
+		</form>
+	</div>
+</section>
+
+<div class="cprt-grid cprt-grid-2">
+	<section class="cprt-card">
+		<div class="cprt-card-header">
+			<h2><?php esc_html_e( 'Logs per Day', 'cp-referrer-and-conversions-tracking' ); ?></h2>
+			<?php if ( '' !== $date_start && '' !== $date_end ) : ?>
+				<span class="cprt-text-muted cprt-text-sm"><?php echo esc_html( $date_start . ' — ' . $date_end ); ?></span>
+			<?php endif; ?>
+		</div>
+		<div class="cprt-card-body">
+			<div class="cprt-chart-wrap">
+				<canvas class="cprt-chart-canvas" height="240" data-cprt-chart="<?php echo esc_attr( $daily_chart_payload ); ?>"></canvas>
+				<div class="cprt-chart-tooltip" hidden></div>
+			</div>
+		</div>
+	</section>
+
+	<section class="cprt-card">
+		<div class="cprt-card-header">
+			<h2><?php esc_html_e( 'Logs per Hour', 'cp-referrer-and-conversions-tracking' ); ?></h2>
+			<span class="cprt-text-muted cprt-text-sm"><?php esc_html_e( '00:00 — 23:00 distribution', 'cp-referrer-and-conversions-tracking' ); ?></span>
+		</div>
+		<div class="cprt-card-body">
+			<div class="cprt-chart-wrap">
+				<canvas class="cprt-chart-canvas" height="240" data-cprt-chart="<?php echo esc_attr( $hourly_chart_payload ); ?>"></canvas>
+				<div class="cprt-chart-tooltip" hidden></div>
+			</div>
+		</div>
+	</section>
 </div>
 
-<?php require_once dirname( __FILE__ ).'/cp-full-stats.inc.php'; ?>
-
-<div class="ahb-section-container">
-	<div class="ahb-section">
-       <form action="admin.php" method="get">
-        <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_report" />
-        <input type="hidden" name="field" value="<?php echo esc_attr($field_filter); ?>" />
-		<nobr><label><?php esc_html_e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
-		<nobr><label><?php esc_html_e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr($date_start); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php esc_html_e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr($date_end); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php esc_html_e('Item','cp-referrer-and-conversions-tracking'); ?>:</label> <select id="cal" name="cal">
-          <option value="0">[<?php esc_html_e('All Items','cp-referrer-and-conversions-tracking'); ?>]</option>
-    </select></nobr>
-		<nobr>
-			<input type="submit" name="<?php echo esc_attr($this->prefix); ?>_csv" value="<?php esc_attr_e('Export to CSV','cp-referrer-and-conversions-tracking'); ?>" class="button" style="float:right;margin-left:10px;">
-			<input type="submit" name="ds" value="<?php esc_attr_e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="float:right;">
-		</nobr>
-       </form>
+<section class="cprt-card">
+	<div class="cprt-card-header cprt-card-header-flex">
+		<div>
+			<h2>
+				<?php
+				printf(
+					/* translators: %s: selected breakdown dimension */
+					esc_html__( 'Top Values by %s', 'cp-referrer-and-conversions-tracking' ),
+					esc_html( $allowed_fields[ $field_filter ] )
+				);
+				?>
+			</h2>
+			<span class="cprt-text-muted cprt-text-sm">
+				<?php esc_html_e( 'Percentage of matching logs (top 50 values)', 'cp-referrer-and-conversions-tracking' ); ?>
+			</span>
+		</div>
+		<form action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" method="get" class="cprt-inline-form cprt-no-print">
+			<input type="hidden" name="page" value="<?php echo esc_attr( $this->menu_parameter ); ?>_report" />
+			<input type="hidden" name="search" value="<?php echo esc_attr( $search_value ); ?>" />
+			<input type="hidden" name="dfrom" value="<?php echo esc_attr( $date_start ); ?>" />
+			<input type="hidden" name="dto" value="<?php echo esc_attr( $date_end ); ?>" />
+			<label for="cprt-breakdown-field" class="screen-reader-text"><?php esc_html_e( 'Select report dimension', 'cp-referrer-and-conversions-tracking' ); ?></label>
+			<select id="cprt-breakdown-field" name="field" class="cprt-select" data-cprt-auto-submit>
+				<?php foreach ( $allowed_fields as $key => $label ) : ?>
+					<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $field_filter, $key ); ?>>
+						<?php echo esc_html( $label ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</form>
 	</div>
-</div>
-
-
-<div class="ahb-statssection-container" style="background:#f6f6f6;float:left;width:48%;">
-	<div class="ahb-statssection-header">
-		<h3><?php esc_html_e('Logs per day','cp-referrer-and-conversions-tracking'); ?></h3>
+	<div class="cprt-card-body">
+		<?php if ( empty( $breakdown_rows ) || $total_logs <= 0 ) : ?>
+			<p class="cprt-empty-state"><?php esc_html_e( 'No log entries match the selected criteria.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+		<?php else : ?>
+			<div class="cprt-breakdown-list">
+				<?php
+				$idx = 0;
+				foreach ( $breakdown_rows as $row ) :
+					$count       = (int) $row->total;
+					$pct         = round( ( $count / $total_logs ) * 100, 2 );
+					$bar_width   = max( 2, min( 100, round( ( $count / $total_logs ) * 100 ) ) );
+					$label_raw   = (string) $row->label;
+					$label_short = ( strlen( $label_raw ) > 80 ) ? substr( $label_raw, 0, 77 ) . '...' : $label_raw;
+					if ( 'hour' === $field_filter ) {
+						$label_short .= ':00';
+					}
+					$color = $bar_palette[ $idx % count( $bar_palette ) ];
+					$idx++;
+					?>
+					<div class="cprt-breakdown-item">
+						<div class="cprt-breakdown-meta">
+							<span class="cprt-breakdown-name" title="<?php echo esc_attr( $label_raw ); ?>"><?php echo esc_html( '' !== $label_short ? $label_short : __( '(empty)', 'cp-referrer-and-conversions-tracking' ) ); ?></span>
+							<span class="cprt-breakdown-stats">
+								<strong><?php echo esc_html( number_format_i18n( $count ) ); ?></strong>
+								<span class="cprt-text-muted">(<?php echo esc_html( $pct ); ?>%)</span>
+							</span>
+						</div>
+						<div class="cprt-bar-track">
+							<div class="cprt-bar-fill" style="width:<?php echo esc_attr( $bar_width ); ?>%;background-color:<?php echo esc_attr( $color ); ?>;"></div>
+						</div>
+					</div>
+				<?php endforeach; ?>
+			</div>
+		<?php endif; ?>
 	</div>
-	<div class="ahb-statssection">
-        <div class="canvas" id="cardiocontainer1" style="margin-left:10px;position:relative;">
-         <canvas id="cardio1"  width="300" height="200" questions='[{"color":"#008ec2","values":[<?php echo htmlentities($daily_messages); ?>]}]'></canvas>
-        </div>
-        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php esc_html_e('Logs per day in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php esc_html_e('Days from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> to <?php echo esc_html($date_end); ?>.</div>
-        <div class="clear"></div>
-	</div>
-</div>
+</section>
 
-<div class="ahb-statssection-container" style="background:#f6f6f6;float:right;width:48%;">
-	<div class="ahb-statssection-header">
-		<h3><?php esc_html_e('Logs per hour','cp-referrer-and-conversions-tracking'); ?></h3>
-	</div>
-	<div class="ahb-statssection" >
-		<div class="canvas" id="cardiocontainer2" style="margin-left:10px;position:relative;">
-         <canvas id="cardio2"  width="312" height="200" questions='[{"color":"#008ec2","values":[<?php echo esc_html($hourly_messages); ?>]}]'></canvas>
-        </div>
-        <div style="padding-right:5px;padding-left:5px;color:#888888;">* <?php esc_html_e('Total logs per hour in the selected date range.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp; <?php esc_html_e('Hours from 0 to 23','cp-referrer-and-conversions-tracking'); ?>.</div>
-        <div class="clear"></div>
-	</div>
-</div>
-<div class="clear"></div>
-
-<br />
-
-<div class="ahb-statssection-container" style="background:#f6f6f6;">
-	<div class="ahb-statssection-header">
-        <form action="admin.php" name="cfm_formrep" method="get">
-         <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_report" />
-         <input type="hidden" name="search" value="<?php echo esc_attr($search_value); ?>" />
-         <input type="hidden" name="dfrom" value="<?php echo esc_attr($date_start); ?>" />
-         <input type="hidden" name="dto" value="<?php echo esc_attr($date_end); ?>" />
-		 <h3><?php esc_html_e('Select field for the report','cp-referrer-and-conversions-tracking'); ?>: <select name="field" onchange="document.cfm_formrep.submit();">
-              <?php
-                   foreach ($fields as $item => $value)
-                       echo '<option value="'.esc_attr($item).'"'.($field_filter==$item?' selected':'').'>'.esc_html($item).'</option>';
-              ?>
-         </select></h3>
-        </form>
-	</div>
-	<div class="ahb-statssection">
-        <div id="dex_printable_contents">
-
-        <div style="width:100%;padding:0;background:white;border:1px solid #e6e6e6;">
-         <div style="padding:10px;background:#ECECEC;color:#21759B;font-weight: bold;">
-           <?php esc_html_e('Report of values for','cp-referrer-and-conversions-tracking'); ?>: <em><?php echo esc_html($field_filter); ?></em>
-         </div>
-
-        <div style="padding:10px;">
-        <?php
-          $arr = $fields[ $field_filter ];
-          arsort($arr, SORT_NUMERIC);
-          $total = 0;
-          /* $totalsize = 600; */
-          foreach ($arr as $item => $value)
-              $total += $value;
-          /* $max = max($arr);
-          $totalsize = round(600 / ($max/$total) ); */
-          $count = 0;
-          foreach ($arr as $item => $value)
-          {
-              echo esc_html($value).' times: '.esc_html(strlen($item)>50?substr($item,1,50).'...':substr($item,1));
-              echo '<div style="width:'.round($value/$total*100).'%;border:1px solid white;margin-bottom:3px;font-size:9px;text-align:center;font-weight:bold;background-color:#'.$color_array[$count].'">'.round($value/$total*100,2).'%</div>';
-              $count++;
-              if ($count >= count($color_array)) $count = count($color_array)-1;
-          }
-        ?>
-        </div>
-
-         <div style="padding-right:5px;padding-left:5px;margin-bottom:20px;color:#888888;">&nbsp;&nbsp;* <?php esc_html_e('Number of times that appears each value. Percent in relation to the total of logs.','cp-referrer-and-conversions-tracking'); ?><br />&nbsp;&nbsp;&nbsp;&nbsp; <?php esc_html_e('Date range from','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_start); ?> <?php esc_html_e('to','cp-referrer-and-conversions-tracking'); ?> <?php echo esc_html($date_end); ?>.</div>
-        </div>
-
-        <div style="clear:both"></div>
-        </div>
-	</div>
-</div>
-
-
-
-<div class="ahb-buttons-container">
-	<input type="button" value="<?php esc_html_e('Print Stats','cp-referrer-and-conversions-tracking'); ?>" onclick="do_dexapp_print();" class="button button-primary" />
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
-	<div class="clear"></div>
-</div>
-
-<script type="text/javascript">
-
- function do_dexapp_print()
- {
-      w=window.open();
-      w.document.write("<style>.cpnopr{display:none;};table{border:2px solid black;width:100%;}th{border-bottom:2px solid black;text-align:left}td{padding-left:10px;border-bottom:1px solid black;}</style>"+document.getElementById('dex_printable_contents').innerHTML);
-      w.print();
-      w.close();
- }
-
- var $j = jQuery.noConflict();
- $j(function() {
- 	$j("#dfrom").datepicker({
-                    dateFormat: 'yy-mm-dd'
-                 });
- 	$j("#dto").datepicker({
-                    dateFormat: 'yy-mm-dd'
-                 });
- });
-
-</script>
-
-
-<script type='text/javascript' src='<?php echo esc_js(plugins_url('js/excanvas.min.js', __FILE__)); ?>'></script>
-<script type="text/javascript">
-var $ = jQuery.noConflict();
-$j(document).ready(function(){
-		    /////////////////////////canvas//////////////////////////
-		    $(window).on('load',function(){
-                drawGraph($("#cardio1"), $("#cardiocontainer1"));
-                drawGraph($("#cardio2"), $("#cardiocontainer2"));
-                function drawGraph(canvas, canvasContainer)
-                {
-		            if( typeof(G_vmlCanvasManager) != 'undefined' ){ G_vmlCanvasManager.init(); G_vmlCanvasManager.initElement(canvas[0]); }
-		            ctx = canvas[0].getContext("2d");
-		            var data = jQuery.parseJSON(canvas.attr("questions"));
-		            var height = canvas.attr("height");
-		            var width = canvas.attr("width");
-		            var maxquestions = 0,maxpos = 0,minpos = 0,interval = 5;
-
-		            jQuery.each(data,function(index,v){
-		                maxquestions = (maxquestions<v.values.length)?v.values.length:maxquestions;
-		                postmp = 0;
-		                jQuery.each(v.values,function(index1,v1){
-		                    maxpos = (maxpos<v1)?v1:maxpos;
-		                    minpos = (minpos>v1)?v1:minpos;
-		                });
-
-		            });
-		            maxpos = maxpos;//Math.ceil(maxpos/interval)*interval;
-		            minpos = 0; //Math.floor(minpos/interval)*interval;
-		            interval = Math.ceil(maxpos / 10);
-		            total = maxpos - minpos + interval;
-		            h = Math.round(height/total);
-		            var start = 10;
-		            var radius = 2;
-		            if (maxquestions>1)
-		                w = Math.round((width-start-radius)/(maxquestions-1));
-		            else
-		                w =  width/2;
-
-		            if(ctx)
-		            {
-		                for (i=0;i<total/interval;i++)
-		                {
-		                    if ((maxpos-i*interval) >= 0) canvasContainer.append('<div class="legend" style="position:absolute;left:-10px;top:'+(parseInt((i*interval+interval/2)*h-5))+'px">'+(maxpos-i*interval)+'</div>');
-		                    ctx.beginPath();
-                            ctx.moveTo(start,Math.round((i*interval+interval/2)*h) );
-                            ctx.lineTo(width,Math.round((i*interval+interval/2)*h) );
-							ctx.lineWidth=1;
-                            ctx.strokeStyle='#d0d0d0';
-                            ctx.stroke();
-		                }
-		                jQuery.each(data,function(index,v){
-		                    ctx.beginPath();
-		                    ctx.strokeStyle = v.color;
-		                    ctx.fillStyle = v.color;
-
-		                    //ctx.moveTo(start,Math.round((maxpos+interval/2)*h) );
-		                    var i = 0,j = 0;
-		                    jQuery.each(v.values,function(index1,v1){
-		                        j=-v1;
-		                        if (i!=0)
-		                            ctx.lineTo(i*w+start,Math.round((maxpos+interval/2)*h+j*h));
-		                        else
-		                            ctx.moveTo(i*w+start,Math.round((maxpos+interval/2)*h+j*h));
-		                        i++;
-		                     });
-
-		                     ctx.stroke();
-		                     var i = 0,j = 0;
-		                     jQuery.each(v.values,function(index1,v1){
-		                         j=-v1;
-		                         ctx.beginPath();
-		                         ctx.arc(i*w+start,Math.round((maxpos+interval/2)*h+j*h), radius, 0, 2 * Math.PI, true);
-		                         ctx.fill();
-		                         i++;
-		                     });
-		                });
-		            }
-		        }
-            });
-
-		    ////////////////////////end canvas///////////////////////
-});
-</script>
-
-
-
-
-
-
-
-
-
-
+<?php
+$this->render_admin_footer();
