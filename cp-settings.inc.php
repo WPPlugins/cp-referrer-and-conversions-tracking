@@ -11,6 +11,8 @@ $this->require_manage_access();
 
 $nonce               = wp_create_nonce( 'cpreftrack_actions_admin' );
 $tracking_enabled    = ( '' === get_option( 'cp_cpreftrack_rep_enable', '' ) );
+$utm_enabled         = $this->is_utm_tracking_enabled();
+$dashboard_widget    = $this->is_dashboard_widget_enabled();
 $retention_days      = max( 1, absint( get_option( 'cp_cpreftrack_rep_days', 90 ) ) );
 $ip_mode             = $this->get_ip_storage_mode();
 $respect_dnt         = ( 'yes' === get_option( 'cp_cpreftrack_respect_dnt', 'no' ) );
@@ -27,7 +29,7 @@ $ip_mode_labels = array(
 $this->render_admin_header(
 	'settings',
 	__( 'General & Privacy Settings', 'cp-referrer-and-conversions-tracking' ),
-	__( 'Configure referrer logging, GDPR privacy controls, cookie behavior, and automatic database retention.', 'cp-referrer-and-conversions-tracking' )
+	__( 'Configure referrer logging, native UTM tracking, GDPR privacy controls, cookie behavior, and automatic database retention.', 'cp-referrer-and-conversions-tracking' )
 );
 ?>
 
@@ -52,6 +54,36 @@ $this->render_admin_header(
 					</div>
 					<label class="cprt-switch">
 						<input type="checkbox" id="cprt-enable-tracking" name="cp_cpreftrack_rep_enable_toggle" value="1" <?php checked( $tracking_enabled ); ?> />
+						<span class="cprt-switch-slider"></span>
+					</label>
+				</div>
+
+				<div class="cprt-setting-row">
+					<div class="cprt-setting-info">
+						<label for="cprt-enable-utm" class="cprt-setting-label">
+							<?php esc_html_e( 'Enable Native UTM Parameter Tracking', 'cp-referrer-and-conversions-tracking' ); ?>
+						</label>
+						<p class="cprt-setting-desc">
+							<?php esc_html_e( 'Automatically capture standard utm_source, utm_medium, utm_campaign, utm_term, and utm_content parameters for first-touch and last-touch attribution—even when browsers strip the HTTP referer header.', 'cp-referrer-and-conversions-tracking' ); ?>
+						</p>
+					</div>
+					<label class="cprt-switch">
+						<input type="checkbox" id="cprt-enable-utm" name="cp_cpreftrack_utm_enable" value="1" <?php checked( $utm_enabled ); ?> />
+						<span class="cprt-switch-slider"></span>
+					</label>
+				</div>
+
+				<div class="cprt-setting-row">
+					<div class="cprt-setting-info">
+						<label for="cprt-dashboard-widget" class="cprt-setting-label">
+							<?php esc_html_e( 'Show WordPress Dashboard Widget', 'cp-referrer-and-conversions-tracking' ); ?>
+						</label>
+						<p class="cprt-setting-desc">
+							<?php esc_html_e( 'Display a 7-day referral sparkline, top traffic sources, and recent conversions summary on the main WordPress admin Dashboard.', 'cp-referrer-and-conversions-tracking' ); ?>
+						</p>
+					</div>
+					<label class="cprt-switch">
+						<input type="checkbox" id="cprt-dashboard-widget" name="cp_cpreftrack_dashboard_widget" value="1" <?php checked( $dashboard_widget ); ?> />
 						<span class="cprt-switch-slider"></span>
 					</label>
 				</div>
@@ -91,9 +123,14 @@ $this->render_admin_header(
 		<section class="cprt-card">
 			<div class="cprt-card-header">
 				<h2><?php esc_html_e( 'GDPR & Privacy Controls', 'cp-referrer-and-conversions-tracking' ); ?></h2>
-				<span class="cprt-badge <?php echo ( 'full' !== $ip_mode ) ? 'cprt-badge-emerald' : 'cprt-badge-amber'; ?>">
-					<?php echo ( 'full' !== $ip_mode ) ? esc_html__( 'Privacy Protected', 'cp-referrer-and-conversions-tracking' ) : esc_html__( 'Raw IP Storage', 'cp-referrer-and-conversions-tracking' ); ?>
-				</span>
+				<div class="cprt-btn-group">
+					<a href="<?php echo esc_url( $this->get_help_url( 'help-privacy' ) ); ?>" class="cprt-inline-help-link">
+						<?php esc_html_e( 'Privacy guide', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+					</a>
+					<span class="cprt-badge <?php echo ( 'full' !== $ip_mode ) ? 'cprt-badge-emerald' : 'cprt-badge-amber'; ?>">
+						<?php echo ( 'full' !== $ip_mode ) ? esc_html__( 'Privacy Protected', 'cp-referrer-and-conversions-tracking' ) : esc_html__( 'Raw IP Storage', 'cp-referrer-and-conversions-tracking' ); ?>
+					</span>
+				</div>
 			</div>
 			<div class="cprt-card-body">
 				<div class="cprt-setting-row cprt-setting-row-stack">
@@ -124,7 +161,7 @@ $this->render_admin_header(
 							<?php esc_html_e( 'Honor Do Not Track (DNT) & Global Privacy Control (GPC)', 'cp-referrer-and-conversions-tracking' ); ?>
 						</label>
 						<p class="cprt-setting-desc">
-							<?php esc_html_e( 'Skip referrer logging and cookies for visitors whose browser sends DNT: 1 or Sec-GPC: 1 headers.', 'cp-referrer-and-conversions-tracking' ); ?>
+							<?php esc_html_e( 'Skip referrer logging, UTM capture, and cookies for visitors whose browser sends DNT: 1 or Sec-GPC: 1 headers.', 'cp-referrer-and-conversions-tracking' ); ?>
 						</p>
 					</div>
 					<label class="cprt-switch">
@@ -139,7 +176,7 @@ $this->render_admin_header(
 							<?php esc_html_e( 'Cookieless Tracking Mode', 'cp-referrer-and-conversions-tracking' ); ?>
 						</label>
 						<p class="cprt-setting-desc">
-							<?php esc_html_e( 'Prevent setting cprreftrack and cprreftracklatest cookies. First-touch referrers remain tracked server-side; last-touch cookie tracking is disabled.', 'cp-referrer-and-conversions-tracking' ); ?>
+							<?php esc_html_e( 'Prevent setting referral and UTM cookies (cprreftrack, cprreftracklatest, cprreftrackutm, cprreftrackutmlatest). First-touch referrers and UTMs remain tracked server-side; last-touch cookie tracking is disabled.', 'cp-referrer-and-conversions-tracking' ); ?>
 						</p>
 					</div>
 					<label class="cprt-switch">
@@ -180,6 +217,16 @@ $this->render_admin_header(
 				<div>
 					<dt><?php esc_html_e( 'Active IP Storage Mode', 'cp-referrer-and-conversions-tracking' ); ?></dt>
 					<dd><?php echo esc_html( isset( $ip_mode_labels[ $ip_mode ] ) ? $ip_mode_labels[ $ip_mode ] : $ip_mode ); ?></dd>
+				</div>
+				<div>
+					<dt><?php esc_html_e( 'Native UTM Tracking', 'cp-referrer-and-conversions-tracking' ); ?></dt>
+					<dd>
+						<?php
+						echo $utm_enabled
+							? esc_html__( 'Active (utm_source, utm_medium, utm_campaign, utm_term, utm_content)', 'cp-referrer-and-conversions-tracking' )
+							: esc_html__( 'Disabled', 'cp-referrer-and-conversions-tracking' );
+						?>
+					</dd>
 				</div>
 				<div>
 					<dt><?php esc_html_e( 'Cookie Policy', 'cp-referrer-and-conversions-tracking' ); ?></dt>

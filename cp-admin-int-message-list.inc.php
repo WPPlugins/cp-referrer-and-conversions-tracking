@@ -52,12 +52,12 @@ $csv_nonce  = wp_create_nonce( 'cpreftrack_export_csv' );
 
 $csv_url = add_query_arg(
 	array(
-		'page'                  => $this->menu_parameter . '_list',
-		$this->prefix . '_csv'  => '1',
-		'_cprt_csv_nonce'       => $csv_nonce,
-		'search'                => $search_value,
-		'dfrom'                 => $rawfrom,
-		'dto'                   => $rawto,
+		'page'                 => $this->menu_parameter . '_list',
+		$this->prefix . '_csv' => '1',
+		'_cprt_csv_nonce'      => $csv_nonce,
+		'search'               => $search_value,
+		'dfrom'                => $rawfrom,
+		'dto'                  => $rawto,
 	),
 	admin_url( 'admin.php' )
 );
@@ -77,7 +77,7 @@ $this->render_admin_header(
 
 			<div class="cprt-field cprt-field-grow">
 				<label for="cprt-logs-search"><?php esc_html_e( 'Search', 'cp-referrer-and-conversions-tracking' ); ?></label>
-				<input type="search" id="cprt-logs-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Visitor ID / IP, referrer URL, or entry page...', 'cp-referrer-and-conversions-tracking' ); ?>" />
+				<input type="search" id="cprt-logs-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Visitor ID / IP, referrer URL, UTM parameter, or entry page...', 'cp-referrer-and-conversions-tracking' ); ?>" />
 			</div>
 
 			<div class="cprt-field">
@@ -134,6 +134,7 @@ $this->render_admin_header(
 						<th><?php esc_html_e( 'Visitor ID / IP', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th><?php esc_html_e( 'Timestamp', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th><?php esc_html_e( 'Referrer', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'UTM Parameters', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th><?php esc_html_e( 'Entry Page', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th class="cprt-col-actions cprt-no-print"><?php esc_html_e( 'Actions', 'cp-referrer-and-conversions-tracking' ); ?></th>
 					</tr>
@@ -141,17 +142,19 @@ $this->render_admin_header(
 				<tbody>
 					<?php if ( empty( $events ) ) : ?>
 						<tr>
-							<td colspan="6" class="cprt-empty-state">
+							<td colspan="7" class="cprt-empty-state">
 								<?php esc_html_e( 'No tracking logs found for the current filters.', 'cp-referrer-and-conversions-tracking' ); ?>
 							</td>
 						</tr>
 					<?php else : ?>
 						<?php foreach ( $events as $row ) : ?>
 							<?php
-							$data      = $this->decode_log_data( $row->data );
-							$raw_entry = isset( $data['entry'] ) ? (string) $data['entry'] : '';
-							$entry_url = $this->format_entry_url( $raw_entry );
-							$entry_lbl = ( strlen( $raw_entry ) > 55 ) ? '...' . substr( $raw_entry, -52 ) : $raw_entry;
+							$data       = $this->decode_log_data( $row->data );
+							$raw_entry  = isset( $data['entry'] ) ? (string) $data['entry'] : '';
+							$utm_params = isset( $data['utm'] ) ? $this->sanitize_utm_params( $data['utm'] ) : array();
+							$utm_html   = $this->render_utm_badges_html( $utm_params, 'first' );
+							$entry_url  = $this->format_entry_url( $raw_entry );
+							$entry_lbl  = ( strlen( $raw_entry ) > 55 ) ? '...' . substr( $raw_entry, -52 ) : $raw_entry;
 							$is_ref_url = (bool) preg_match( '#^https?://#i', (string) $row->referrer );
 							?>
 							<tr>
@@ -167,6 +170,13 @@ $this->render_admin_header(
 										</a>
 									<?php else : ?>
 										<span class="cprt-badge cprt-badge-blue"><?php echo esc_html( $row->referrer ); ?></span>
+									<?php endif; ?>
+								</td>
+								<td class="cprt-break-word">
+									<?php if ( '' !== $utm_html ) : ?>
+										<?php echo wp_kses_post( $utm_html ); ?>
+									<?php else : ?>
+										<span class="cprt-text-muted">&mdash;</span>
 									<?php endif; ?>
 								</td>
 								<td class="cprt-break-word">

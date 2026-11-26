@@ -1,6 +1,6 @@
 <?php
 /**
- * Referral Sources / Campaign Parameters view.
+ * Referral Sources & UTM Campaign Link Builder view.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -53,17 +53,92 @@ $events = $wpdb->get_results(
 
 $params_nonce = wp_create_nonce( 'cpreftrack_actions_params' );
 $site_base    = $this->get_site_url();
+$utm_enabled  = $this->is_utm_tracking_enabled();
 
 $this->render_admin_header(
 	'sources',
-	__( 'Referral Sources & Campaign Links', 'cp-referrer-and-conversions-tracking' ),
-	__( 'Define custom query parameters to attribute visitors from ads, newsletters, and social posts even when HTTP referers are stripped.', 'cp-referrer-and-conversions-tracking' )
+	__( 'Referral Sources & UTM Link Builder', 'cp-referrer-and-conversions-tracking' ),
+	__( 'Generate standard UTM campaign URLs or register custom query parameter rules to attribute traffic reliably across ads, emails, and social platforms.', 'cp-referrer-and-conversions-tracking' )
 );
 ?>
 
 <section class="cprt-card cprt-no-print">
 	<div class="cprt-card-header">
-		<h2><?php esc_html_e( 'Create New Campaign Link', 'cp-referrer-and-conversions-tracking' ); ?></h2>
+		<div>
+			<h2><?php esc_html_e( 'UTM Campaign URL Builder', 'cp-referrer-and-conversions-tracking' ); ?></h2>
+		</div>
+		<div class="cprt-btn-group">
+			<a href="<?php echo esc_url( $this->get_help_url( 'help-utm-sources' ) ); ?>" class="cprt-inline-help-link">
+				<?php esc_html_e( 'How UTM parameters work', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+			</a>
+			<span class="cprt-badge <?php echo $utm_enabled ? 'cprt-badge-emerald' : 'cprt-badge-amber'; ?>">
+				<?php echo $utm_enabled ? esc_html__( 'Tracked Automatically', 'cp-referrer-and-conversions-tracking' ) : esc_html__( 'Native UTM Tracking Paused', 'cp-referrer-and-conversions-tracking' ); ?>
+			</span>
+		</div>
+	</div>
+	<div class="cprt-card-body">
+		<div class="cprt-utm-builder" data-cprt-site-url="<?php echo esc_attr( $site_base . '/' ); ?>">
+			<div class="cprt-form-grid-3">
+				<div class="cprt-field">
+					<label for="cprt-utm-url"><?php esc_html_e( 'Landing Page URL', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-url" value="<?php echo esc_attr( $site_base . '/' ); ?>" placeholder="<?php echo esc_attr( $site_base . '/landing-page/' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'Any page on your site (defaults to homepage).', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+				<div class="cprt-field">
+					<label for="cprt-utm-source"><?php esc_html_e( 'Campaign Source (utm_source)', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-source" maxlength="150" placeholder="<?php esc_attr_e( 'e.g. google, newsletter, instagram', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'The referrer or platform sending traffic.', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+				<div class="cprt-field">
+					<label for="cprt-utm-medium"><?php esc_html_e( 'Campaign Medium (utm_medium)', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-medium" maxlength="150" placeholder="<?php esc_attr_e( 'e.g. cpc, email, paid_social', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'Marketing channel or traffic type.', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+			</div>
+
+			<div class="cprt-form-grid-3">
+				<div class="cprt-field">
+					<label for="cprt-utm-campaign"><?php esc_html_e( 'Campaign Name (utm_campaign)', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-campaign" maxlength="150" placeholder="<?php esc_attr_e( 'e.g. spring_sale, product_launch', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'Promo code, campaign slug, or offer name.', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+				<div class="cprt-field">
+					<label for="cprt-utm-term"><?php esc_html_e( 'Campaign Term (utm_term)', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-term" maxlength="150" placeholder="<?php esc_attr_e( 'Optional paid search keyword', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'Optional targeting keyword or audience.', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+				<div class="cprt-field">
+					<label for="cprt-utm-content"><?php esc_html_e( 'Campaign Content (utm_content)', 'cp-referrer-and-conversions-tracking' ); ?></label>
+					<input type="text" id="cprt-utm-content" maxlength="150" placeholder="<?php esc_attr_e( 'Optional ad variant, e.g. hero_cta', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<span class="cprt-field-hint"><?php esc_html_e( 'Optional A/B test or creative identifier.', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				</div>
+			</div>
+
+			<div class="cprt-preview-bar">
+				<div class="cprt-preview-url">
+					<span class="cprt-preview-label"><?php esc_html_e( 'Generated UTM URL:', 'cp-referrer-and-conversions-tracking' ); ?></span>
+					<code id="cprt-utm-live-preview"><?php echo esc_html( $site_base ); ?>/?<span class="cprt-hl-key">utm_source</span>=<span class="cprt-hl-val">google</span>&amp;<span class="cprt-hl-key">utm_medium</span>=<span class="cprt-hl-val">cpc</span></code>
+				</div>
+				<div class="cprt-btn-group">
+					<button type="button" id="cprt-utm-reset" class="cprt-btn cprt-btn-ghost"><?php esc_html_e( 'Reset', 'cp-referrer-and-conversions-tracking' ); ?></button>
+					<button type="button" id="cprt-utm-copy-btn" class="cprt-btn cprt-btn-primary" data-cprt-copy="" disabled>
+						<?php esc_html_e( 'Copy UTM Link', 'cp-referrer-and-conversions-tracking' ); ?>
+					</button>
+				</div>
+			</div>
+			<p class="cprt-text-muted cprt-text-sm" style="margin:10px 0 0;">
+				<?php esc_html_e( 'Standard UTM links work out of the box with no manual registration needed—incoming UTM parameters are automatically stored in Tracking Logs, Tracking Stats, CSV exports, and Conversions.', 'cp-referrer-and-conversions-tracking' ); ?>
+			</p>
+		</div>
+	</div>
+</section>
+
+<section class="cprt-card cprt-no-print">
+	<div class="cprt-card-header">
+		<h2><?php esc_html_e( 'Create Custom Referral Rule', 'cp-referrer-and-conversions-tracking' ); ?></h2>
+		<a href="<?php echo esc_url( $this->get_help_url( 'help-custom-rules' ) ); ?>" class="cprt-inline-help-link">
+			<?php esc_html_e( 'When to use custom rules', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+		</a>
 	</div>
 	<div class="cprt-card-body">
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_parameters' ) ); ?>" class="cprt-builder-form" data-cprt-site-url="<?php echo esc_attr( $site_base ); ?>">
@@ -73,15 +148,15 @@ $this->render_admin_header(
 			<div class="cprt-form-grid-3">
 				<div class="cprt-field">
 					<label for="cprt-refname"><?php esc_html_e( 'Referral Name', 'cp-referrer-and-conversions-tracking' ); ?></label>
-					<input type="text" id="cprt-refname" name="refname" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. Facebook Ads Q1', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<input type="text" id="cprt-refname" name="refname" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. Partner Affiliate A', 'cp-referrer-and-conversions-tracking' ); ?>" />
 				</div>
 				<div class="cprt-field">
 					<label for="cprt-paramname"><?php esc_html_e( 'Parameter Name', 'cp-referrer-and-conversions-tracking' ); ?></label>
-					<input type="text" id="cprt-paramname" name="paramname" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. utm_source or ref', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<input type="text" id="cprt-paramname" name="paramname" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. ref or partner', 'cp-referrer-and-conversions-tracking' ); ?>" />
 				</div>
 				<div class="cprt-field">
 					<label for="cprt-paramvalue"><?php esc_html_e( 'Parameter Value', 'cp-referrer-and-conversions-tracking' ); ?></label>
-					<input type="text" id="cprt-paramvalue" name="paramvalue" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. facebook', 'cp-referrer-and-conversions-tracking' ); ?>" />
+					<input type="text" id="cprt-paramvalue" name="paramvalue" required maxlength="250" placeholder="<?php esc_attr_e( 'e.g. partner1', 'cp-referrer-and-conversions-tracking' ); ?>" />
 				</div>
 			</div>
 
@@ -101,7 +176,7 @@ $this->render_admin_header(
 		<form action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" method="get" class="cprt-filter-bar">
 			<input type="hidden" name="page" value="<?php echo esc_attr( $this->menu_parameter ); ?>_parameters" />
 			<div class="cprt-field cprt-field-grow">
-				<label for="cprt-params-search"><?php esc_html_e( 'Search Sources', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<label for="cprt-params-search"><?php esc_html_e( 'Search Custom Sources', 'cp-referrer-and-conversions-tracking' ); ?></label>
 				<input type="search" id="cprt-params-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Filter by referral name, parameter, or value...', 'cp-referrer-and-conversions-tracking' ); ?>" />
 			</div>
 			<div class="cprt-filter-actions">
@@ -155,7 +230,7 @@ $this->render_admin_header(
 					<?php if ( empty( $events ) ) : ?>
 						<tr>
 							<td colspan="6" class="cprt-empty-state">
-								<?php esc_html_e( 'No custom referral sources configured yet. Add one above to generate trackable campaign links.', 'cp-referrer-and-conversions-tracking' ); ?>
+								<?php esc_html_e( 'No custom referral rules configured yet. Use the UTM Campaign URL Builder above or add a custom parameter rule.', 'cp-referrer-and-conversions-tracking' ); ?>
 							</td>
 						</tr>
 					<?php else : ?>

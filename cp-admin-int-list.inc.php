@@ -112,7 +112,7 @@ if ( ! empty( $cpreftrack_addons_active_list ) && is_array( $cpreftrack_addons_o
 			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
 		</div>
 		<h3><?php esc_html_e( 'Referral Sources', 'cp-referrer-and-conversions-tracking' ); ?></h3>
-		<p><?php esc_html_e( 'Create custom campaign links with query parameters to reliably attribute traffic from ads, emails, and social platforms.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+		<p><?php esc_html_e( 'Build standard UTM campaign URLs or define custom referral parameters to attribute traffic from ads, emails, and social platforms.', 'cp-referrer-and-conversions-tracking' ); ?></p>
 		<span class="cprt-feature-cta"><?php esc_html_e( 'Manage Campaigns', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;</span>
 	</a>
 
@@ -144,13 +144,29 @@ if ( ! empty( $cpreftrack_addons_active_list ) && is_array( $cpreftrack_addons_o
 	</a>
 </section>
 
+<section class="cprt-card cprt-help-banner">
+	<div class="cprt-card-body cprt-help-banner-body">
+		<div>
+			<h3 style="margin:0 0 4px;font-size:15px;"><?php esc_html_e( 'New to CP Referrer Tracking or want to get more from UTM campaigns?', 'cp-referrer-and-conversions-tracking' ); ?></h3>
+			<p class="cprt-text-muted cprt-text-sm" style="margin:0;"><?php esc_html_e( 'Read our practical step-by-step guide covering UTM tagging, first-touch vs. last-touch conversions, WooCommerce attribution, and GDPR privacy settings.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+		</div>
+		<a href="<?php echo esc_url( $this->get_help_url( 'help-overview' ) ); ?>" class="cprt-btn cprt-btn-primary">
+			<?php esc_html_e( 'Open Help & User Guide', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+		</a>
+	</div>
+</section>
+
 <footer class="cprt-footer-links">
+	<a href="<?php echo esc_url( $this->get_help_url() ); ?>">
+		<?php esc_html_e( 'Help & User Guide', 'cp-referrer-and-conversions-tracking' ); ?>
+	</a>
+	<span aria-hidden="true">&middot;</span>
 	<a href="<?php echo esc_url( 'https://wordpress.dwbooster.com/contact-us' ); ?>" target="_blank" rel="noopener noreferrer">
 		<?php esc_html_e( 'Request Custom Modifications', 'cp-referrer-and-conversions-tracking' ); ?>
 	</a>
 	<span aria-hidden="true">&middot;</span>
 	<a href="<?php echo esc_url( $this->plugin_URL ); ?>" target="_blank" rel="noopener noreferrer">
-		<?php esc_html_e( 'Documentation & Help', 'cp-referrer-and-conversions-tracking' ); ?>
+		<?php esc_html_e( 'Online Documentation', 'cp-referrer-and-conversions-tracking' ); ?>
 	</a>
 </footer>
 

@@ -13,7 +13,8 @@
 		copied: 'Copied!',
 		copyLink: 'Copy Link',
 		logsLabel: 'logs',
-		noChartData: 'No data recorded for the selected range.'
+		noChartData: 'No data recorded for the selected range.',
+		utmMissingRequired: 'Enter at least a UTM Source to build a campaign URL.'
 	};
 
 	function initSelectAll() {
@@ -127,6 +128,141 @@
 		if (valInput) {
 			valInput.addEventListener('input', updatePreview);
 		}
+	}
+
+	function initUtmBuilder() {
+		var wrap = document.querySelector('.cprt-utm-builder');
+		var preview = document.getElementById('cprt-utm-live-preview');
+		var copyBtn = document.getElementById('cprt-utm-copy-btn');
+		var resetBtn = document.getElementById('cprt-utm-reset');
+		if (!wrap || !preview || !copyBtn) {
+			return;
+		}
+
+		var defaultSiteUrl = wrap.getAttribute('data-cprt-site-url') || '';
+		var urlInput = document.getElementById('cprt-utm-url');
+		var fields = [
+			{ key: 'utm_source', el: document.getElementById('cprt-utm-source') },
+			{ key: 'utm_medium', el: document.getElementById('cprt-utm-medium') },
+			{ key: 'utm_campaign', el: document.getElementById('cprt-utm-campaign') },
+			{ key: 'utm_term', el: document.getElementById('cprt-utm-term') },
+			{ key: 'utm_content', el: document.getElementById('cprt-utm-content') }
+		];
+
+		function buildBaseAndHash(rawUrl) {
+			var trimmed = (rawUrl || '').trim() || defaultSiteUrl;
+			var hashIndex = trimmed.indexOf('#');
+			var hash = '';
+			var withoutHash = trimmed;
+			if (hashIndex !== -1) {
+				hash = trimmed.slice(hashIndex);
+				withoutHash = trimmed.slice(0, hashIndex);
+			}
+			return { base: withoutHash, hash: hash };
+		}
+
+		function updateUtmPreview() {
+			var parts = buildBaseAndHash(urlInput ? urlInput.value : defaultSiteUrl);
+			var activePairs = [];
+
+			fields.forEach(function (item) {
+				if (item.el) {
+					var val = item.el.value.trim();
+					if (val) {
+						activePairs.push({ key: item.key, val: val });
+					}
+				}
+			});
+
+			preview.textContent = '';
+
+			if (!activePairs.length) {
+				var sepExample = parts.base.indexOf('?') === -1 ? '?' : '&';
+				preview.appendChild(document.createTextNode(parts.base + sepExample));
+				var exK1 = document.createElement('span');
+				exK1.className = 'cprt-hl-key';
+				exK1.textContent = 'utm_source';
+				preview.appendChild(exK1);
+				preview.appendChild(document.createTextNode('='));
+				var exV1 = document.createElement('span');
+				exV1.className = 'cprt-hl-val';
+				exV1.textContent = 'google';
+				preview.appendChild(exV1);
+				preview.appendChild(document.createTextNode('&'));
+				var exK2 = document.createElement('span');
+				exK2.className = 'cprt-hl-key';
+				exK2.textContent = 'utm_medium';
+				preview.appendChild(exK2);
+				preview.appendChild(document.createTextNode('='));
+				var exV2 = document.createElement('span');
+				exV2.className = 'cprt-hl-val';
+				exV2.textContent = 'cpc';
+				preview.appendChild(exV2);
+				if (parts.hash) {
+					preview.appendChild(document.createTextNode(parts.hash));
+				}
+				copyBtn.setAttribute('data-cprt-copy', '');
+				copyBtn.disabled = true;
+				return;
+			}
+
+			var sep = parts.base.indexOf('?') === -1 ? '?' : '&';
+			var fullUrl = parts.base + sep;
+			preview.appendChild(document.createTextNode(parts.base + sep));
+
+			activePairs.forEach(function (pair, idx) {
+				var encodedVal = encodeURIComponent(pair.val);
+				if (idx > 0) {
+					fullUrl += '&';
+					preview.appendChild(document.createTextNode('&'));
+				}
+				fullUrl += pair.key + '=' + encodedVal;
+
+				var spanK = document.createElement('span');
+				spanK.className = 'cprt-hl-key';
+				spanK.textContent = pair.key;
+				preview.appendChild(spanK);
+				preview.appendChild(document.createTextNode('='));
+
+				var spanV = document.createElement('span');
+				spanV.className = 'cprt-hl-val';
+				spanV.textContent = encodedVal;
+				preview.appendChild(spanV);
+			});
+
+			if (parts.hash) {
+				fullUrl += parts.hash;
+				preview.appendChild(document.createTextNode(parts.hash));
+			}
+
+			copyBtn.setAttribute('data-cprt-copy', fullUrl);
+			copyBtn.disabled = false;
+		}
+
+		if (urlInput) {
+			urlInput.addEventListener('input', updateUtmPreview);
+		}
+		fields.forEach(function (item) {
+			if (item.el) {
+				item.el.addEventListener('input', updateUtmPreview);
+			}
+		});
+
+		if (resetBtn) {
+			resetBtn.addEventListener('click', function () {
+				if (urlInput) {
+					urlInput.value = defaultSiteUrl;
+				}
+				fields.forEach(function (item) {
+					if (item.el) {
+						item.el.value = '';
+					}
+				});
+				updateUtmPreview();
+			});
+		}
+
+		updateUtmPreview();
 	}
 
 	function initCopyButtons() {
@@ -388,12 +524,83 @@
 		});
 	}
 
+	function initHelpGuide() {
+		var tocLinks = document.querySelectorAll('.cprt-toc-link');
+		if (!tocLinks.length) {
+			return;
+		}
+
+		var linkMap = {};
+		var sections = [];
+
+		tocLinks.forEach(function (link) {
+			var href = link.getAttribute('href') || '';
+			if (href.charAt(0) === '#') {
+				var id = href.slice(1);
+				var target = document.getElementById(id);
+				if (target) {
+					linkMap[id] = link;
+					sections.push(target);
+				}
+			}
+		});
+
+		function setActiveLink(id) {
+			tocLinks.forEach(function (l) {
+				l.classList.remove('is-current');
+			});
+			if (linkMap[id]) {
+				linkMap[id].classList.add('is-current');
+			}
+		}
+
+		function highlightHashTarget() {
+			var hash = window.location.hash ? window.location.hash.slice(1) : '';
+			if (!hash) {
+				return;
+			}
+			var target = document.getElementById(hash);
+			if (!target) {
+				return;
+			}
+			var card = target.classList.contains('cprt-help-section') ? target : target.closest('.cprt-help-section');
+			if (card && card.id) {
+				setActiveLink(card.id);
+				card.classList.add('is-highlighted');
+				window.setTimeout(function () {
+					card.classList.remove('is-highlighted');
+				}, 2200);
+			}
+		}
+
+		if ('IntersectionObserver' in window && sections.length) {
+			var observer = new IntersectionObserver(
+				function (entries) {
+					entries.forEach(function (entry) {
+						if (entry.isIntersecting && entry.target.id) {
+							setActiveLink(entry.target.id);
+						}
+					});
+				},
+				{ rootMargin: '-18% 0px -68% 0px', threshold: 0.01 }
+			);
+			sections.forEach(function (sec) {
+				observer.observe(sec);
+			});
+		}
+
+		window.addEventListener('hashchange', highlightHashTarget);
+		highlightHashTarget();
+	}
+
 	document.addEventListener('DOMContentLoaded', function () {
 		initSelectAll();
 		initDeleteHandlers();
 		initAutoSubmitAndPrint();
 		initCampaignBuilder();
+		initUtmBuilder();
 		initCopyButtons();
 		initCharts();
+		initHelpGuide();
 	});
 })();

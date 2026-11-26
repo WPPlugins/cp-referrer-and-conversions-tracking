@@ -1,0 +1,281 @@
+/**
+ * CP Referrer and Conversion Tracking — WordPress Dashboard Widget Styles
+ * Strictly scoped under .cprt-dash-widget to prevent bleed into WP Admin.
+ */
+
+.cprt-dash-widget {
+	color: #0f172a;
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.cprt-dash-widget * {
+	box-sizing: border-box;
+}
+
+.cprt-dash-widget .cprt-dw-topbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.cprt-dash-widget .cprt-dw-range {
+	font-size: 11.5px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #64748b;
+}
+
+.cprt-dash-widget .cprt-dw-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11.5px;
+	font-weight: 600;
+}
+
+.cprt-dash-widget .cprt-dw-status.is-active {
+	background: #ecfdf5;
+	color: #059669;
+}
+
+.cprt-dash-widget .cprt-dw-status.is-paused {
+	background: #f1f5f9;
+	color: #64748b;
+}
+
+.cprt-dash-widget .cprt-dw-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.cprt-dash-widget .cprt-dw-kpis {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	margin-bottom: 14px;
+}
+
+.cprt-dash-widget .cprt-dw-kpi {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 7px;
+	padding: 10px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.cprt-dash-widget .cprt-dw-kpi-label {
+	font-size: 11.5px;
+	font-weight: 600;
+	color: #64748b;
+}
+
+.cprt-dash-widget .cprt-dw-kpi-row {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.cprt-dash-widget .cprt-dw-kpi-value {
+	font-size: 22px;
+	font-weight: 800;
+	line-height: 1.2;
+}
+
+.cprt-dash-widget .cprt-dw-blue {
+	color: #2563eb;
+}
+
+.cprt-dash-widget .cprt-dw-emerald {
+	color: #059669;
+}
+
+.cprt-dash-widget .cprt-dw-rate {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: #ecfdf5;
+	color: #047857;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.cprt-dash-widget .cprt-dw-section {
+	padding-top: 12px;
+	margin-top: 12px;
+	border-top: 1px solid #e2e8f0;
+}
+
+.cprt-dash-widget .cprt-dw-section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.cprt-dash-widget .cprt-dw-section-head h4 {
+	margin: 0;
+	font-size: 12.5px;
+	font-weight: 700;
+	color: #1e293b;
+}
+
+.cprt-dash-widget .cprt-dw-more {
+	font-size: 12px;
+	font-weight: 600;
+	color: #2563eb;
+	text-decoration: none;
+}
+
+.cprt-dash-widget .cprt-dw-more:hover {
+	text-decoration: underline;
+}
+
+.cprt-dash-widget .cprt-dw-sparkline svg {
+	display: block;
+}
+
+.cprt-dash-widget .cprt-dw-spark-labels {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	text-align: center;
+	margin-top: 4px;
+	font-size: 11px;
+	color: #64748b;
+}
+
+.cprt-dash-widget .cprt-dw-empty {
+	margin: 4px 0 2px;
+	color: #64748b;
+	font-size: 12.5px;
+}
+
+.cprt-dash-widget .cprt-dw-bars,
+.cprt-dash-widget .cprt-dw-conv-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.cprt-dash-widget .cprt-dw-bar-meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 3px;
+	font-size: 12.5px;
+}
+
+.cprt-dash-widget .cprt-dw-bar-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: #334155;
+}
+
+.cprt-dash-widget .cprt-dw-bar-count {
+	flex-shrink: 0;
+	color: #0f172a;
+}
+
+.cprt-dash-widget .cprt-dw-bar-track {
+	width: 100%;
+	height: 6px;
+	border-radius: 999px;
+	background: #f1f5f9;
+	overflow: hidden;
+}
+
+.cprt-dash-widget .cprt-dw-bar-fill {
+	height: 100%;
+	border-radius: 999px;
+	background: #2563eb;
+}
+
+.cprt-dash-widget .cprt-dw-conv-list li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.cprt-dash-widget .cprt-dw-conv-list li:last-child {
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
+.cprt-dash-widget .cprt-dw-conv-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.cprt-dash-widget .cprt-dw-conv-badge {
+	display: inline-block;
+	align-self: flex-start;
+	padding: 1px 7px;
+	border-radius: 999px;
+	background: #ecfdf5;
+	color: #059669;
+	font-size: 11px;
+	font-weight: 600;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cprt-dash-widget .cprt-dw-conv-source {
+	font-size: 12px;
+	color: #475569;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cprt-dash-widget .cprt-dw-conv-time {
+	flex-shrink: 0;
+	font-size: 11.5px;
+	color: #64748b;
+	white-space: nowrap;
+}
+
+.cprt-dash-widget .cprt-dw-footer {
+	margin-top: 12px;
+	padding-top: 10px;
+	border-top: 1px solid #e2e8f0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	flex-wrap: wrap;
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.cprt-dash-widget .cprt-dw-footer a {
+	color: #2563eb;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.cprt-dash-widget .cprt-dw-footer a:hover {
+	text-decoration: underline;
+}

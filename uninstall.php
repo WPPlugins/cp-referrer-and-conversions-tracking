@@ -50,6 +50,8 @@ if ( ! function_exists( 'cpreftrack_uninstall_single_site' ) ) {
 		// Delete all plugin options.
 		$options = array(
 			'cp_cpreftrack_rep_enable',
+			'cp_cpreftrack_utm_enable',
+			'cp_cpreftrack_dashboard_widget',
 			'cp_cpreftrack_rep_days',
 			'cp_cpreftrack_ip_mode',
 			'cp_cpreftrack_respect_dnt',

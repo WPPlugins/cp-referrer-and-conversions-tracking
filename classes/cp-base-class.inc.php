@@ -242,6 +242,60 @@ if ( ! class_exists( 'CP_REFTRACK_BaseClass' ) ) {
 		}
 
 		/**
+		 * Return the supported standard UTM parameter keys.
+		 *
+		 * @return array
+		 */
+		public function get_utm_keys() {
+			return array(
+				'utm_source',
+				'utm_medium',
+				'utm_campaign',
+				'utm_term',
+				'utm_content',
+			);
+		}
+
+		/**
+		 * Return human-readable labels for standard UTM keys.
+		 *
+		 * @return array
+		 */
+		public function get_utm_labels() {
+			return array(
+				'utm_source'   => __( 'Source', 'cp-referrer-and-conversions-tracking' ),
+				'utm_medium'   => __( 'Medium', 'cp-referrer-and-conversions-tracking' ),
+				'utm_campaign' => __( 'Campaign', 'cp-referrer-and-conversions-tracking' ),
+				'utm_term'     => __( 'Term', 'cp-referrer-and-conversions-tracking' ),
+				'utm_content'  => __( 'Content', 'cp-referrer-and-conversions-tracking' ),
+			);
+		}
+
+		/**
+		 * Filter and sanitize an associative array of UTM parameters.
+		 *
+		 * @param mixed $raw Raw array of UTM values.
+		 * @return array Clean associative array containing only allowlisted, non-empty UTM keys.
+		 */
+		public function sanitize_utm_params( $raw ) {
+			if ( ! is_array( $raw ) ) {
+				return array();
+			}
+
+			$clean = array();
+			foreach ( $this->get_utm_keys() as $key ) {
+				if ( isset( $raw[ $key ] ) && ! is_array( $raw[ $key ] ) ) {
+					$val = trim( sanitize_text_field( (string) $raw[ $key ] ) );
+					if ( '' !== $val ) {
+						$clean[ $key ] = substr( $val, 0, 150 );
+					}
+				}
+			}
+
+			return $clean;
+		}
+
+		/**
 		 * Safely decode log metadata stored as JSON (preferred) or legacy PHP serialized array.
 		 *
 		 * @param mixed $raw Raw database column content.
@@ -269,6 +323,91 @@ if ( ! class_exists( 'CP_REFTRACK_BaseClass' ) ) {
 			}
 
 			return array();
+		}
+
+		/**
+		 * Safely decode conversion UTM attribution JSON into normalized ['first' => array, 'last' => array].
+		 *
+		 * @param mixed $raw Raw utm_data column content.
+		 * @return array{first: array, last: array}
+		 */
+		public function decode_conversion_utm( $raw ) {
+			$result = array(
+				'first' => array(),
+				'last'  => array(),
+			);
+
+			$decoded = $this->decode_log_data( $raw );
+			if ( empty( $decoded ) ) {
+				return $result;
+			}
+
+			if ( isset( $decoded['first'] ) && is_array( $decoded['first'] ) ) {
+				$result['first'] = $this->sanitize_utm_params( $decoded['first'] );
+			}
+			if ( isset( $decoded['last'] ) && is_array( $decoded['last'] ) ) {
+				$result['last'] = $this->sanitize_utm_params( $decoded['last'] );
+			}
+
+			// Handle flat UTM array gracefully if stored directly.
+			if ( empty( $result['first'] ) && empty( $result['last'] ) ) {
+				$flat = $this->sanitize_utm_params( $decoded );
+				if ( ! empty( $flat ) ) {
+					$result['first'] = $flat;
+				}
+			}
+
+			return $result;
+		}
+
+		/**
+		 * Render compact UTM chips HTML for admin list tables.
+		 *
+		 * @param array  $utm_params Associative array of UTM key => value.
+		 * @param string $variant    Optional CSS modifier ('first' or 'last').
+		 * @return string Safe escaped HTML.
+		 */
+		public function render_utm_badges_html( $utm_params, $variant = 'first' ) {
+			$clean = $this->sanitize_utm_params( $utm_params );
+			if ( empty( $clean ) ) {
+				return '';
+			}
+
+			$labels = $this->get_utm_labels();
+			$class  = ( 'last' === $variant ) ? 'cprt-utm-chip cprt-utm-chip-muted' : 'cprt-utm-chip';
+			$parts  = array();
+
+			foreach ( $clean as $key => $value ) {
+				$short_label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
+				$parts[]     = sprintf(
+					'<span class="%1$s" title="%2$s"><span class="cprt-utm-key">%3$s:</span> %4$s</span>',
+					esc_attr( $class ),
+					esc_attr( $key . '=' . $value ),
+					esc_html( $short_label ),
+					esc_html( $value )
+				);
+			}
+
+			return '<div class="cprt-utm-list">' . implode( '', $parts ) . '</div>';
+		}
+
+		/**
+		 * Format a UTM array as a single plain-text summary string (useful for privacy exports & CSV).
+		 *
+		 * @param array $utm_params Associative array of UTM key => value.
+		 * @return string
+		 */
+		public function format_utm_plain_text( $utm_params ) {
+			$clean = $this->sanitize_utm_params( $utm_params );
+			if ( empty( $clean ) ) {
+				return '';
+			}
+
+			$pairs = array();
+			foreach ( $clean as $key => $value ) {
+				$pairs[] = $key . '=' . $value;
+			}
+			return implode( ', ', $pairs );
 		}
 
 		/**
@@ -396,6 +535,21 @@ if ( ! class_exists( 'CP_REFTRACK_BaseClass' ) ) {
 		}
 
 		/**
+		 * Build a URL to the built-in Help & User Guide, optionally anchored to a specific section.
+		 *
+		 * @param string $section Optional section anchor ID (without leading #).
+		 * @return string
+		 */
+		public function get_help_url( $section = '' ) {
+			$url = admin_url( 'admin.php?page=' . $this->menu_parameter . '_help' );
+			$section = preg_replace( '/[^a-z0-9\-_]/i', '', (string) $section );
+			if ( '' !== $section ) {
+				$url .= '#' . $section;
+			}
+			return $url;
+		}
+
+		/**
 		 * Render the unified modern plugin header and navigation bar.
 		 *
 		 * @param string $active_slug Active tab key.
@@ -432,11 +586,27 @@ if ( ! class_exists( 'CP_REFTRACK_BaseClass' ) ) {
 					'label' => __( 'Settings', 'cp-referrer-and-conversions-tracking' ),
 					'page'  => $this->menu_parameter . '_settings',
 				),
+				'help'        => array(
+					'label' => __( 'Help & Guide', 'cp-referrer-and-conversions-tracking' ),
+					'page'  => $this->menu_parameter . '_help',
+				),
 				'support'     => array(
 					'label' => __( 'Support', 'cp-referrer-and-conversions-tracking' ),
 					'page'  => $this->menu_parameter . '_support',
 				),
 			);
+
+			$help_section_map = array(
+				'dashboard'   => array( 'help-overview', __( 'Quick Start Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'logs'        => array( 'help-logs', __( 'Logs Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'stats'       => array( 'help-stats', __( 'Stats Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'sources'     => array( 'help-utm-sources', __( 'UTM & Links Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'conversions' => array( 'help-conversions', __( 'Conversions Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'addons'      => array( 'help-addons', __( 'Add-Ons Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'settings'    => array( 'help-settings', __( 'Settings & Privacy Guide', 'cp-referrer-and-conversions-tracking' ) ),
+				'support'     => array( 'help-developers', __( 'Troubleshooting & Hooks', 'cp-referrer-and-conversions-tracking' ) ),
+			);
+			$contextual_help  = isset( $help_section_map[ $active_slug ] ) ? $help_section_map[ $active_slug ] : null;
 
 			$tracking_enabled = ( '' === get_option( 'cp_cpreftrack_rep_enable', '' ) );
 			?>
@@ -458,11 +628,17 @@ if ( ! class_exists( 'CP_REFTRACK_BaseClass' ) ) {
 							</div>
 						</div>
 						<div class="cprt-header-meta">
+							<?php if ( $contextual_help ) : ?>
+								<a href="<?php echo esc_url( $this->get_help_url( $contextual_help[0] ) ); ?>" class="cprt-btn cprt-btn-sm cprt-btn-secondary cprt-header-help-btn cprt-no-print" title="<?php echo esc_attr( $contextual_help[1] ); ?>">
+									<span class="cprt-help-q" aria-hidden="true">?</span>
+									<?php echo esc_html( $contextual_help[1] ); ?>
+								</a>
+							<?php endif; ?>
 							<span class="cprt-status-pill <?php echo $tracking_enabled ? 'cprt-pill-success' : 'cprt-pill-muted'; ?>">
 								<span class="cprt-pill-dot"></span>
 								<?php echo $tracking_enabled ? esc_html__( 'Tracking Active', 'cp-referrer-and-conversions-tracking' ) : esc_html__( 'Tracking Paused', 'cp-referrer-and-conversions-tracking' ); ?>
 							</span>
-							<span class="cprt-version-badge">v<?php echo esc_html( defined( 'CPREFTRACK_VERSION' ) ? CPREFTRACK_VERSION : '2.0.0' ); ?></span>
+							<span class="cprt-version-badge">v<?php echo esc_html( defined( 'CPREFTRACK_VERSION' ) ? CPREFTRACK_VERSION : '2.1.0' ); ?></span>
 						</div>
 					</div>
 					<nav class="cprt-nav" aria-label="<?php esc_attr_e( 'Plugin navigation', 'cp-referrer-and-conversions-tracking' ); ?>">

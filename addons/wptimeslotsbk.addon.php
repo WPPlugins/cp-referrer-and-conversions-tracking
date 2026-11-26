@@ -21,7 +21,7 @@ if ( ! class_exists( 'CPREFTRACK_WPTimeSlotsBK' ) ) {
 		public function __construct() {
 			$this->description = sprintf(
 				/* translators: %s: companion plugin link */
-				__( 'Enables referrer tracking for conversions in the %s plugin.', 'cp-referrer-and-conversions-tracking' ),
+				'Enables referrer tracking for conversions in the %s plugin.',
 				$this->build_plugin_info_link( 'wp-time-slots-booking-form', 'WP Time Slots Booking Form' )
 			);
 

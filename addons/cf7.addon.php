@@ -21,7 +21,7 @@ if ( ! class_exists( 'CPREFTRACK_CF7' ) ) {
 		public function __construct() {
 			$this->description = sprintf(
 				/* translators: %s: companion plugin link */
-				__( 'Enables referrer tracking for conversions in the %s plugin.', 'cp-referrer-and-conversions-tracking' ),
+				'Enables referrer tracking for conversions in the %s plugin.',
 				$this->build_plugin_info_link( 'contact-form-7', 'Contact Form 7' )
 			);
 

@@ -95,33 +95,81 @@ for ( $h = 0; $h <= 23; $h++ ) {
 	$hourly_values[] = isset( $hourly_map[ $h ] ) ? $hourly_map[ $h ] : 0;
 }
 
-// 4. Breakdown dimension selector (allowlisted).
+// 4. Breakdown dimension selector (allowlisted, including UTM dimensions).
 $allowed_fields = array(
-	'referrer' => __( 'Referrer', 'cp-referrer-and-conversions-tracking' ),
-	'date'     => __( 'Date', 'cp-referrer-and-conversions-tracking' ),
-	'hour'     => __( 'Hour of Day', 'cp-referrer-and-conversions-tracking' ),
-	'ip'       => __( 'Visitor ID / IP', 'cp-referrer-and-conversions-tracking' ),
+	'referrer'     => __( 'Referrer', 'cp-referrer-and-conversions-tracking' ),
+	'utm_source'   => __( 'UTM Source', 'cp-referrer-and-conversions-tracking' ),
+	'utm_medium'   => __( 'UTM Medium', 'cp-referrer-and-conversions-tracking' ),
+	'utm_campaign' => __( 'UTM Campaign', 'cp-referrer-and-conversions-tracking' ),
+	'date'         => __( 'Date', 'cp-referrer-and-conversions-tracking' ),
+	'hour'         => __( 'Hour of Day', 'cp-referrer-and-conversions-tracking' ),
+	'ip'           => __( 'Visitor ID / IP', 'cp-referrer-and-conversions-tracking' ),
 );
-$raw_field    = $this->get_get_param( 'field', 'referrer' );
-$field_filter = array_key_exists( $raw_field, $allowed_fields ) ? $raw_field : 'referrer';
+$utm_dimensions = array( 'utm_source', 'utm_medium', 'utm_campaign' );
+$raw_field      = $this->get_get_param( 'field', 'referrer' );
+$field_filter   = array_key_exists( $raw_field, $allowed_fields ) ? $raw_field : 'referrer';
+$is_utm_field   = in_array( $field_filter, $utm_dimensions, true );
 
-$breakdown_rows = array();
-if ( 'referrer' === $field_filter ) {
-	$b_sql = "SELECT referrer AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY referrer ORDER BY total DESC LIMIT 50";
-} elseif ( 'date' === $field_filter ) {
-	$b_sql = "SELECT DATE(`time`) AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 50";
-} elseif ( 'hour' === $field_filter ) {
-	$b_sql = "SELECT LPAD(HOUR(`time`), 2, '0') AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 24";
-} else {
-	$b_sql = "SELECT id AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY id ORDER BY total DESC LIMIT 50";
-}
+$breakdown_rows  = array();
+$breakdown_total = $total_logs;
 
-if ( ! empty( $filter['params'] ) ) {
+if ( $is_utm_field ) {
+	$utm_like   = '%' . $wpdb->esc_like( '"' . $field_filter . '"' ) . '%';
+	$utm_params = $filter['params'];
+	$utm_params[] = $utm_like;
+	$utm_sql    = $wpdb->prepare(
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		"SELECT data FROM `{$table}` WHERE {$filter['where']} AND data LIKE %s",
+		$utm_params
+	);
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-	$b_sql = $wpdb->prepare( $b_sql, $filter['params'] );
+	$raw_utm_rows = $wpdb->get_col( $utm_sql );
+	$utm_counts   = array();
+	$utm_matched  = 0;
+
+	if ( is_array( $raw_utm_rows ) ) {
+		foreach ( $raw_utm_rows as $raw_blob ) {
+			$decoded = $this->decode_log_data( $raw_blob );
+			if ( isset( $decoded['utm'][ $field_filter ] ) && is_string( $decoded['utm'][ $field_filter ] ) ) {
+				$val = trim( $decoded['utm'][ $field_filter ] );
+				if ( '' !== $val ) {
+					if ( ! isset( $utm_counts[ $val ] ) ) {
+						$utm_counts[ $val ] = 0;
+					}
+					$utm_counts[ $val ]++;
+					$utm_matched++;
+				}
+			}
+		}
+	}
+
+	arsort( $utm_counts );
+	$utm_counts      = array_slice( $utm_counts, 0, 50, true );
+	$breakdown_total = $utm_matched;
+	foreach ( $utm_counts as $utm_val => $utm_cnt ) {
+		$breakdown_rows[] = (object) array(
+			'label' => $utm_val,
+			'total' => $utm_cnt,
+		);
+	}
+} else {
+	if ( 'referrer' === $field_filter ) {
+		$b_sql = "SELECT referrer AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY referrer ORDER BY total DESC LIMIT 50";
+	} elseif ( 'date' === $field_filter ) {
+		$b_sql = "SELECT DATE(`time`) AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 50";
+	} elseif ( 'hour' === $field_filter ) {
+		$b_sql = "SELECT LPAD(HOUR(`time`), 2, '0') AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY label ORDER BY total DESC LIMIT 24";
+	} else {
+		$b_sql = "SELECT id AS label, COUNT(*) AS total FROM `{$table}` WHERE {$filter['where']} GROUP BY id ORDER BY total DESC LIMIT 50";
+	}
+
+	if ( ! empty( $filter['params'] ) ) {
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$b_sql = $wpdb->prepare( $b_sql, $filter['params'] );
+	}
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$breakdown_rows = $wpdb->get_results( $b_sql );
 }
-// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-$breakdown_rows = $wpdb->get_results( $b_sql );
 
 $csv_nonce = wp_create_nonce( 'cpreftrack_export_csv' );
 $csv_url   = add_query_arg(
@@ -174,7 +222,7 @@ require_once CPREFTRACK_PLUGIN_DIR . 'cp-full-stats.inc.php';
 
 			<div class="cprt-field cprt-field-grow">
 				<label for="cprt-rep-search"><?php esc_html_e( 'Search', 'cp-referrer-and-conversions-tracking' ); ?></label>
-				<input type="search" id="cprt-rep-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Filter analytics by referrer or entry...', 'cp-referrer-and-conversions-tracking' ); ?>" />
+				<input type="search" id="cprt-rep-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Filter analytics by referrer, UTM parameter, or entry...', 'cp-referrer-and-conversions-tracking' ); ?>" />
 			</div>
 
 			<div class="cprt-field">
@@ -242,7 +290,17 @@ require_once CPREFTRACK_PLUGIN_DIR . 'cp-full-stats.inc.php';
 				?>
 			</h2>
 			<span class="cprt-text-muted cprt-text-sm">
-				<?php esc_html_e( 'Percentage of matching logs (top 50 values)', 'cp-referrer-and-conversions-tracking' ); ?>
+				<?php
+				if ( $is_utm_field ) {
+					printf(
+						/* translators: %s: number of UTM-tagged logs */
+						esc_html__( 'Percentage of %s UTM-tagged logs (top 50 values)', 'cp-referrer-and-conversions-tracking' ),
+						esc_html( number_format_i18n( $breakdown_total ) )
+					);
+				} else {
+					esc_html_e( 'Percentage of matching logs (top 50 values)', 'cp-referrer-and-conversions-tracking' );
+				}
+				?>
 			</span>
 		</div>
 		<form action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" method="get" class="cprt-inline-form cprt-no-print">
@@ -261,16 +319,22 @@ require_once CPREFTRACK_PLUGIN_DIR . 'cp-full-stats.inc.php';
 		</form>
 	</div>
 	<div class="cprt-card-body">
-		<?php if ( empty( $breakdown_rows ) || $total_logs <= 0 ) : ?>
-			<p class="cprt-empty-state"><?php esc_html_e( 'No log entries match the selected criteria.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+		<?php if ( empty( $breakdown_rows ) || $breakdown_total <= 0 ) : ?>
+			<p class="cprt-empty-state">
+				<?php
+				echo $is_utm_field
+					? esc_html__( 'No UTM-tagged log entries match the selected criteria yet.', 'cp-referrer-and-conversions-tracking' )
+					: esc_html__( 'No log entries match the selected criteria.', 'cp-referrer-and-conversions-tracking' );
+				?>
+			</p>
 		<?php else : ?>
 			<div class="cprt-breakdown-list">
 				<?php
 				$idx = 0;
 				foreach ( $breakdown_rows as $row ) :
 					$count       = (int) $row->total;
-					$pct         = round( ( $count / $total_logs ) * 100, 2 );
-					$bar_width   = max( 2, min( 100, round( ( $count / $total_logs ) * 100 ) ) );
+					$pct         = round( ( $count / $breakdown_total ) * 100, 2 );
+					$bar_width   = max( 2, min( 100, round( ( $count / $breakdown_total ) * 100 ) ) );
 					$label_raw   = (string) $row->label;
 					$label_short = ( strlen( $label_raw ) > 80 ) ? substr( $label_raw, 0, 77 ) . '...' : $label_raw;
 					if ( 'hour' === $field_filter ) {

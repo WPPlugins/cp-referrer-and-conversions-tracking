@@ -1,60 +1,59 @@
 === CP Referrer and Conversion Tracking ===
 Contributors: codepeople
 Donate link: https://wordpress.dwbooster.com
-Tags: referrer, conversion, referer, logs, stats
+Tags: referrer, conversion, utm, logs, stats
 Requires at least: 5.8
 Requires PHP: 7.4
 Tested up to: 7.1
-Stable tag: 2.0.9
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Track visitor referral websites, generate custom campaign links, and attribute conversions from forms, bookings, and WooCommerce.
+Track visitor referral websites, native UTM campaign parameters, custom links, and conversions from forms, bookings, and WooCommerce.
 
 == Description ==
 
-CP Referrer and Conversion Tracking is a practical tool for evaluating the results of your marketing campaigns. It records the referral website of each visitor and attributes conversions—such as purchases, contact form submissions, appointments, bookings, and user registrations—back to their original traffic sources.
+CP Referrer and Conversion Tracking is a practical tool for evaluating the results of your marketing campaigns. It records the referral website and standard UTM campaign parameters of each visitor and attributes conversions—such as purchases, contact form submissions, appointments, bookings, and user registrations—back to their original traffic sources.
 
 The main features include:
 
-* Records the external HTTP referrer and initial landing page of each website visitor (Tracking Logs).
-* Displays interactive daily and hourly charts alongside yearly, monthly, weekly, and daily analytics summaries (Tracking Stats).
-* Allows you to create custom campaign links for different marketing platforms with live previews and one-click copying (Referral Sources).
-* Records both the initial (first-touch) referrer and the most recent (last-touch) referrer for conversions (Conversions).
+* Records the external HTTP referrer, initial landing page, and native UTM parameters (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`) of each website visitor (Tracking Logs).
+* Displays interactive daily and hourly charts alongside yearly, monthly, weekly, daily, and UTM source/medium/campaign analytics summaries (Tracking Stats).
+* Built-in UTM Campaign URL Builder and custom referral parameter generator with live previews and one-click copying (Referral Sources).
+* Records both initial (first-touch) and most recent (last-touch) referrers and UTM parameters for conversions (Conversions).
+* Includes a lightweight WordPress Dashboard Widget showing a 7-day referral sparkline, top referrers, and recent conversions at a glance.
 * Includes built-in conversion tracking integrations for popular WordPress plugins (Add-Ons).
 * Built-in GDPR and privacy controls: salted IP hashing, IP anonymization, Do Not Track / Global Privacy Control support, cookieless mode, WordPress Privacy Policy Guide integration, and Personal Data Export/Erasure support.
 
-= Recording the Referrer =
+= Recording the Referrer & Native UTM Parameters =
 
-The CP Referrer and Conversion Tracking plugin detects and stores the referring website whenever an external HTTP referer header is present (for example, when a visitor clicks a link from Google, Facebook, or another external website).
+The CP Referrer and Conversion Tracking plugin detects and stores the referring website whenever an external HTTP referer header is present (for example, when a visitor clicks a link from Google, Facebook, or another external website) as well as standard UTM query parameters (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, and `utm_content`) even when browsers or mobile apps strip the HTTP referer header.
 
-Visitors with identified referrers are listed under the **Tracking Logs** menu. The referrer, visitor identifier (salted hash, anonymized IP, or full IP depending on your privacy setting), landing page, and timestamp of the first visit are recorded in the logs.
+Visitors with identified referrers or UTM tags are listed under the **Tracking Logs** menu. The referrer, captured UTM parameters, visitor identifier (salted hash, anonymized IP, or full IP depending on your privacy setting), landing page, and timestamp of the first visit are recorded in the logs and included as dedicated columns in CSV exports.
 
-To avoid storing excessive log data, old logs are automatically deleted after 90 days by default. You can customize this retention period or trigger an immediate cleanup from the **General Settings** screen.
+To avoid storing excessive log data, old logs are automatically deleted after 90 days by default. You can customize this retention period, toggle native UTM tracking, or trigger an immediate cleanup from the **General Settings** screen.
 
-= Graphics and Statistics of Referral Websites =
+= Graphics and Statistics of Referral Websites & UTM Campaigns =
 
-Recorded logs power interactive charts showing daily and hourly referral trends, as well as a percentage breakdown of top referral sources.
+Recorded logs power interactive charts showing daily and hourly referral trends, as well as a percentage breakdown of top referral sources, UTM sources, UTM mediums, and UTM campaigns.
 
 Historical summaries are also calculated for logs received per year, over the last 12 months, over the last 12 weeks, and over the last 30 days. This helps you evaluate referral trends across different time frames. *Note: Historical totals may be affected by the automatic deletion of expired logs.*
 
 This section is located under the **Tracking Stats** menu.
 
-= Creating Custom Referral Links for Marketing Campaigns =
+= UTM Campaign URL Builder & Custom Referral Links =
 
-The **Referral Sources** section lets you build custom links for different marketing platforms, making it easier to identify exact traffic sources.
-
-For example, you can set up dedicated entry URLs for a Google Ads campaign and for Facebook Ads. This ensures the exact referral source is reported even if a visitor's browser strips the automatic HTTP referer header.
+The **Referral Sources** section includes a built-in **UTM Campaign URL Builder** with live previews and one-click copying—standard UTM links are tracked automatically without manual registration. You can also define custom non-UTM query parameter rules (such as `?ref=partner1`) for bespoke marketing platforms.
 
 = Tracking Conversions =
 
-CP Referrer and Conversion Tracking can identify the referral source behind conversions such as contact form submissions, WooCommerce orders, bookings, appointment requests, and new user registrations.
+CP Referrer and Conversion Tracking can identify the referral source and UTM campaign behind conversions such as contact form submissions, WooCommerce orders, bookings, appointment requests, and new user registrations.
 
-Each conversion lists both the initial visit's referrer and the latest session's referrer if the visitor returned through a different source before converting.
+Each conversion lists both the initial visit's referrer/UTM tags and the latest session's referrer/UTM tags if the visitor returned through a different source or campaign before converting.
 
 To record conversions from a supported plugin, enable its integration under the **Add-Ons** menu. Built-in conversion tracking add-ons are included for the following plugins and features:
 
-* [WooCommerce](https://wordpress.org/plugins/woocommerce/) (HPOS and Classic Order Storage compatible)
+* [WooCommerce](https://wordpress.org/plugins/woocommerce/) (HPOS and Classic Order Storage compatible, with a dedicated Order Attribution sidebar metabox)
 * [Contact Form 7](https://wordpress.org/plugins/contact-form-7/)
 * [Contact Form to Email](https://wordpress.org/plugins/contact-form-to-email/)
 * [Appointment Hour Booking](https://wordpress.org/plugins/appointment-hour-booking/)
@@ -73,12 +72,12 @@ Conversions are listed under the **Conversions** menu.
 Under **General Settings**, you can tailor data collection to match your site's privacy requirements:
 
 * **Visitor IP Address Handling:** Choose between one-way salted hashing (recommended for GDPR), WordPress Core IP anonymization, or legacy full IP storage.
-* **Do Not Track (DNT) & Global Privacy Control (GPC):** Automatically skip logging and cookies when visitors enable browser privacy signals.
-* **Cookieless Mode:** Disable first-party tracking cookies (`cprreftrack` and `cprreftracklatest`) while keeping server-side first-touch attribution active.
+* **Do Not Track (DNT) & Global Privacy Control (GPC):** Automatically skip logging, UTM capture, and cookies when visitors enable browser privacy signals.
+* **Cookieless Mode:** Disable first-party tracking cookies (`cprreftrack`, `cprreftracklatest`, `cprreftrackutm`, and `cprreftrackutmlatest`) while keeping server-side first-touch referrer and UTM attribution active.
 * **Clean Uninstall:** Optionally remove all database tables and plugin options when deleting the plugin from WordPress.
-* **WordPress Privacy Tools:** Automatically adds suggested disclosure language to **Settings > Privacy > Policy Guide** and supports **Export Personal Data** and **Erase Personal Data** requests for matching conversion records.
+* **WordPress Privacy Tools:** Automatically adds suggested disclosure language to **Settings > Privacy > Policy Guide** and supports **Export Personal Data** and **Erase Personal Data** requests for matching conversion records (including UTM attribution).
 
-For developers: If you need to track a custom conversion programmatically, please see the FAQ section below for the supported hooks.
+For developers: If you need to track a custom conversion programmatically or read captured UTM parameters, please see the FAQ section below for the supported hooks.
 
 == Installation ==
 
@@ -99,7 +98,7 @@ Feel free to contact us in the support forum. We will point you to an existing s
 
 Go to **CP Referrer Tracking > General Settings**, enable **Delete All Plugin Data on Uninstall**, and save your settings before deleting the plugin from the WordPress **Plugins** screen.
 
-= For developers: Which hooks are supported for registering custom conversions? =
+= For developers: Which hooks are supported for registering custom conversions and reading UTM data? =
 
 Register a custom conversion:
 
@@ -108,6 +107,20 @@ Register a custom conversion:
 Retrieve the current visitor's recorded referrer:
 
     $referrer = apply_filters( 'cpreftrack_referrer', '' );
+
+Retrieve the current visitor's recorded first-touch UTM parameters (associative array):
+
+    $utm = apply_filters( 'cpreftrack_utm_data', array() );
+
+Retrieve the current visitor's complete attribution snapshot (first/last referrer, landing page, and first/last UTM parameters):
+
+    $attribution = apply_filters( 'cpreftrack_attribution_data', array() );
+
+Customize how UTM-only visits (without an HTTP referer header) are labeled:
+
+    add_filter( 'cpreftrack_utm_referrer_label', function( $label, $utm_params ) {
+        return $label;
+    }, 10, 2 );
 
 Customize how a conversion appears in the Conversions list:
 
@@ -126,12 +139,23 @@ Customize the capability required to access plugin admin screens (defaults to `m
 
 == Screenshots ==
 
-1. Tracking logs with referrers and landing pages
-2. Tracking stats and interactive charts
-3. Defining custom referral links for marketing platforms
-4. Conversions with first-touch and last-touch attribution
+1. Tracking logs with referrers, UTM parameters, and landing pages
+2. Tracking stats and interactive charts with UTM breakdowns
+3. UTM Campaign URL Builder and custom referral rules
+4. Conversions with first-touch and last-touch referrer and UTM attribution
 
 == Changelog ==
+
+= 2.1.0 =
+* Added Native UTM Parameter Tracking (`utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`) with automatic first-touch and last-touch attribution even when HTTP referer headers are stripped.
+* Added a dedicated **UTM Parameters** column to Tracking Logs, first-touch and last-touch UTM attribution badges to Conversions, and dedicated UTM columns (`UTM Source`, `UTM Medium`, `UTM Campaign`, `UTM Term`, `UTM Content`) to CSV exports.
+* Added an interactive **UTM Campaign URL Builder** with live preview and one-click copy under Referral Sources.
+* Added **UTM Source**, **UTM Medium**, and **UTM Campaign** breakdown dimensions to Tracking Stats.
+* Added a native **WordPress Dashboard Widget** displaying 7-day referral and conversion KPIs, an inline SVG 7-day activity sparkline, top referrers, and recent conversions (toggleable from General Settings).
+* Added a dedicated **WooCommerce Order Attribution Metabox** (HPOS and Classic Order Storage compatible) displaying origin type, first-touch and last-touch referrers, initial landing page, and first/last UTM chips directly inside WooCommerce orders, plus formal WooCommerce HPOS (`custom_order_tables`) compatibility declaration and the `cpreftrack_attribution_data` developer filter.
+* Added a toggle in General Settings to enable/disable native UTM tracking, updated WordPress GDPR Privacy Policy Guide & Personal Data Exporter to include UTM attribution, and added the `cpreftrack_utm_data` and `cpreftrack_utm_referrer_label` developer filters.
+* Added a practical built-in **Help & User Guide** screen covering quick-start setup, UTM best practices, attribution, WooCommerce, GDPR privacy, and troubleshooting, with contextual Help links from every plugin screen, the WP Dashboard widget, and the WooCommerce Order metabox.
+* Synchronized `CPREFTRACK_VERSION` and `CPREFTRACK_DB_VERSION` constants to `2.1.0` with automatic `dbDelta()` migration adding `utm_data` to the conversions table.
 
 = 2.0.9 =
 * Added GDPR and privacy settings: salted one-way IP hashing, IP anonymization, Do Not Track (DNT) / Global Privacy Control (GPC) support, cookieless tracking mode, WordPress Privacy Policy Guide integration, and Personal Data Exporter & Eraser support.
@@ -238,6 +262,9 @@ Customize the capability required to access plugin admin screens (defaults to `m
 * First version published
 
 == Upgrade Notice ==
+
+= 2.1.0 =
+Adds Native UTM Parameter Tracking (first-touch and last-touch), interactive UTM Campaign URL Builder, UTM analytics breakdowns, a native WordPress Dashboard overview widget, and a dedicated WooCommerce Order Attribution metabox (HPOS & Classic compatible).
 
 = 2.0.9 =
 Major update adding GDPR/privacy controls, clean uninstall support, modernized admin UI, WooCommerce HPOS support, security hardening, and PHP 8.2+ compatibility.

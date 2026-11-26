@@ -20,6 +20,8 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	public $no_ref_indicator      = 'cprefna37193';
 	public $cookie_tracking_days  = 1;
 	public $include_user_data_csv = false;
+	protected $runtime_latest_ref = '';
+	protected $runtime_latest_utm = array();
 
 	/**
 	 * Load plugin translations.
@@ -42,7 +44,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
-	 * Create or upgrade plugin database tables, default privacy options, and daily cleanup cron.
+	 * Create or upgrade plugin database tables, default privacy/UTM options, and daily cleanup cron.
 	 */
 	public function _install() {
 		global $wpdb;
@@ -82,13 +84,16 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 			referrer VARCHAR(250) NOT NULL DEFAULT '',
 			entry VARCHAR(250) NOT NULL DEFAULT '',
 			referrerlast VARCHAR(250) NOT NULL DEFAULT '',
+			utm_data mediumtext,
 			PRIMARY KEY  (id),
 			KEY idx_time (time),
 			KEY idx_convname (convname(191))
 		) {$charset_collate};";
 		dbDelta( $sql_conv );
 
-		// Privacy defaults (only set if not already configured).
+		// Feature & privacy defaults (only set if not already configured).
+		add_option( 'cp_cpreftrack_utm_enable', 'yes' );
+		add_option( 'cp_cpreftrack_dashboard_widget', 'yes' );
 		add_option( 'cp_cpreftrack_ip_mode', 'hash' );
 		add_option( 'cp_cpreftrack_respect_dnt', 'no' );
 		add_option( 'cp_cpreftrack_cookieless', 'no' );
@@ -117,7 +122,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	public function plugin_page_links( $links ) {
 		$custom_link   = '<a href="' . esc_url( 'https://wordpress.dwbooster.com/contact-us' ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Request custom changes', 'cp-referrer-and-conversions-tracking' ) . '</a>';
 		$settings_link = '<a href="' . esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter ) ) . '">' . esc_html__( 'Settings', 'cp-referrer-and-conversions-tracking' ) . '</a>';
-		$help_link     = '<a href="' . esc_url( $this->plugin_URL ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Help', 'cp-referrer-and-conversions-tracking' ) . '</a>';
+		$help_link     = '<a href="' . esc_url( $this->get_help_url() ) . '">' . esc_html__( 'Help & Guide', 'cp-referrer-and-conversions-tracking' ) . '</a>';
 
 		array_unshift( $links, $help_link, $settings_link, $custom_link );
 		return $links;
@@ -212,6 +217,15 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 
 		add_submenu_page(
 			$this->menu_parameter,
+			__( 'Help & Guide', 'cp-referrer-and-conversions-tracking' ),
+			__( 'Help & Guide', 'cp-referrer-and-conversions-tracking' ),
+			$cap,
+			$this->menu_parameter . '_help',
+			array( $this, 'settings_page' )
+		);
+
+		add_submenu_page(
+			$this->menu_parameter,
 			__( 'Support & Docs', 'cp-referrer-and-conversions-tracking' ),
 			__( 'Support & Docs', 'cp-referrer-and-conversions-tracking' ),
 			$cap,
@@ -241,6 +255,8 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 			require_once CPREFTRACK_PLUGIN_DIR . 'cp-settings.inc.php';
 		} elseif ( $page === $this->menu_parameter . '_addons' ) {
 			require_once CPREFTRACK_PLUGIN_DIR . 'cp-addons.inc.php';
+		} elseif ( $page === $this->menu_parameter . '_help' ) {
+			require_once CPREFTRACK_PLUGIN_DIR . 'cp-help.inc.php';
 		} elseif ( $page === $this->menu_parameter . '_support' ) {
 			$this->render_support_page();
 		} else {
@@ -255,7 +271,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$this->render_admin_header(
 			'support',
 			__( 'Support & Developer Reference', 'cp-referrer-and-conversions-tracking' ),
-			__( 'Documentation, custom conversion hooks, and support channels.', 'cp-referrer-and-conversions-tracking' )
+			__( 'Documentation, custom conversion hooks, UTM filters, and support channels.', 'cp-referrer-and-conversions-tracking' )
 		);
 		?>
 		<div class="cprt-grid cprt-grid-2">
@@ -265,7 +281,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				</div>
 				<div class="cprt-card-body">
 					<p class="cprt-text-muted">
-						<?php esc_html_e( 'Need assistance configuring referrer tracking, integrating another form or e-commerce plugin, or requesting custom features?', 'cp-referrer-and-conversions-tracking' ); ?>
+						<?php esc_html_e( 'Need assistance configuring referrer or UTM tracking, integrating another form or e-commerce plugin, or requesting custom features?', 'cp-referrer-and-conversions-tracking' ); ?>
 					</p>
 					<div class="cprt-btn-group">
 						<a href="<?php echo esc_url( 'https://wordpress.org/support/plugin/cp-referrer-and-conversions-tracking/' ); ?>" target="_blank" rel="noopener noreferrer" class="cprt-btn cprt-btn-primary">
@@ -274,8 +290,11 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 						<a href="<?php echo esc_url( 'https://wordpress.dwbooster.com/contact-us' ); ?>" target="_blank" rel="noopener noreferrer" class="cprt-btn cprt-btn-secondary">
 							<?php esc_html_e( 'Request Custom Modifications', 'cp-referrer-and-conversions-tracking' ); ?>
 						</a>
+						<a href="<?php echo esc_url( $this->get_help_url() ); ?>" class="cprt-btn cprt-btn-secondary">
+							<?php esc_html_e( 'Open Built-in User Guide', 'cp-referrer-and-conversions-tracking' ); ?>
+						</a>
 						<a href="<?php echo esc_url( $this->plugin_URL ); ?>" target="_blank" rel="noopener noreferrer" class="cprt-btn cprt-btn-ghost">
-							<?php esc_html_e( 'Plugin Documentation', 'cp-referrer-and-conversions-tracking' ); ?>
+							<?php esc_html_e( 'Online Documentation', 'cp-referrer-and-conversions-tracking' ); ?>
 						</a>
 					</div>
 				</div>
@@ -291,6 +310,12 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 
 					<p class="cprt-label"><?php esc_html_e( 'Retrieve the current visitor referrer:', 'cp-referrer-and-conversions-tracking' ); ?></p>
 					<pre class="cprt-code"><code>$referrer = apply_filters( 'cpreftrack_referrer', '' );</code></pre>
+
+					<p class="cprt-label"><?php esc_html_e( 'Retrieve the current visitor UTM parameters (associative array):', 'cp-referrer-and-conversions-tracking' ); ?></p>
+					<pre class="cprt-code"><code>$utm = apply_filters( 'cpreftrack_utm_data', array() );</code></pre>
+
+					<p class="cprt-label"><?php esc_html_e( 'Retrieve full attribution snapshot (referrer, last referrer, entry page, first/last UTM):', 'cp-referrer-and-conversions-tracking' ); ?></p>
+					<pre class="cprt-code"><code>$attribution = apply_filters( 'cpreftrack_attribution_data', array() );</code></pre>
 
 					<p class="cprt-label"><?php esc_html_e( 'Customize conversion list display:', 'cp-referrer-and-conversions-tracking' ); ?></p>
 					<pre class="cprt-code"><code>add_filter( 'my_custom_conversion', function( $text ) {
@@ -309,6 +334,16 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	 * @param string $hook Current admin page hook suffix.
 	 */
 	public function insert_adminScripts( $hook ) {
+		if ( 'index.php' === $hook && $this->user_can_manage() && $this->is_dashboard_widget_enabled() ) {
+			wp_enqueue_style(
+				'cprt-dashboard-widget',
+				CPREFTRACK_PLUGIN_URL . 'css/dashboard-widget.css',
+				array(),
+				CPREFTRACK_VERSION
+			);
+			return;
+		}
+
 		$page = $this->get_get_param( 'page' );
 		if ( 0 !== strpos( $page, $this->menu_parameter ) ) {
 			return;
@@ -342,6 +377,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				'logsLabel'           => __( 'logs', 'cp-referrer-and-conversions-tracking' ),
 				'hourLabel'           => __( 'Hour', 'cp-referrer-and-conversions-tracking' ),
 				'noChartData'         => __( 'No data recorded for the selected range.', 'cp-referrer-and-conversions-tracking' ),
+				'utmMissingRequired'  => __( 'Enter at least a UTM Source to build a campaign URL.', 'cp-referrer-and-conversions-tracking' ),
 			)
 		);
 	}
@@ -424,7 +460,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
-	 * Save General & GDPR/Privacy Settings securely.
+	 * Save General, UTM & GDPR/Privacy Settings securely.
 	 */
 	public function save_edition() {
 		$this->require_manage_access();
@@ -433,6 +469,9 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		// Preserve backward-compatible option values: '' = enabled, 'no' = disabled.
 		$enabled_toggle = isset( $_POST['cp_cpreftrack_rep_enable_toggle'] ) ? 'yes' : 'no';
 		$rep_enable     = ( 'yes' === $enabled_toggle ) ? '' : 'no';
+
+		$utm_enable       = isset( $_POST['cp_cpreftrack_utm_enable'] ) ? 'yes' : 'no';
+		$dashboard_widget = isset( $_POST['cp_cpreftrack_dashboard_widget'] ) ? 'yes' : 'no';
 
 		$days = absint( $this->get_post_param( 'cp_cpreftrack_rep_days', '90' ) );
 		if ( $days < 1 ) {
@@ -450,6 +489,8 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$delete_on_uninstall = isset( $_POST['cp_cpreftrack_delete_on_uninstall'] ) ? 'yes' : 'no';
 
 		update_option( 'cp_cpreftrack_rep_enable', $rep_enable );
+		update_option( 'cp_cpreftrack_utm_enable', $utm_enable );
+		update_option( 'cp_cpreftrack_dashboard_widget', $dashboard_widget );
 		update_option( 'cp_cpreftrack_rep_days', (string) $days );
 		update_option( 'cp_cpreftrack_ip_mode', $ip_mode );
 		update_option( 'cp_cpreftrack_respect_dnt', $respect_dnt );
@@ -614,6 +655,300 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
+	 * Check whether native UTM parameter tracking is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_utm_tracking_enabled() {
+		return ( 'no' !== get_option( 'cp_cpreftrack_utm_enable', 'yes' ) );
+	}
+
+	/**
+	 * Check whether the WordPress Dashboard overview widget is enabled.
+	 *
+	 * @return bool
+	 */
+	public function is_dashboard_widget_enabled() {
+		return ( 'no' !== get_option( 'cp_cpreftrack_dashboard_widget', 'yes' ) );
+	}
+
+	/**
+	 * Register the WordPress Dashboard overview widget for authorized administrators.
+	 */
+	public function register_dashboard_widget() {
+		if ( ! $this->user_can_manage() || ! $this->is_dashboard_widget_enabled() ) {
+			return;
+		}
+
+		wp_add_dashboard_widget(
+			'cprt_dashboard_overview',
+			__( 'CP Referrer & Conversion Overview', 'cp-referrer-and-conversions-tracking' ),
+			array( $this, 'render_dashboard_widget' )
+		);
+	}
+
+	/**
+	 * Render the WordPress Dashboard overview widget (last 7 days summary, sparkline, top referrers, recent conversions).
+	 */
+	public function render_dashboard_widget() {
+		if ( ! $this->user_can_manage() ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$logs_table = $wpdb->prefix . $this->table_messages;
+		$conv_table = $wpdb->prefix . $this->table_conversions;
+
+		$now_ts         = current_time( 'timestamp' );
+		$start_ts       = strtotime( '-6 days', $now_ts );
+		$since_7d       = wp_date( 'Y-m-d 00:00:00', $start_ts );
+		$tracking_on    = ( '' === get_option( 'cp_cpreftrack_rep_enable', '' ) );
+
+		// 1. Daily referral counts for the last 7 calendar days (uses idx_time).
+		$daily_rows = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT DATE(`time`) AS day_key, COUNT(*) AS total FROM `{$logs_table}` WHERE `time` >= %s GROUP BY day_key ORDER BY day_key ASC",
+				$since_7d
+			)
+		);
+
+		$daily_map = array();
+		$logs_7d   = 0;
+		if ( is_array( $daily_rows ) ) {
+			foreach ( $daily_rows as $r ) {
+				$cnt = (int) $r->total;
+				$daily_map[ (string) $r->day_key ] = $cnt;
+				$logs_7d                          += $cnt;
+			}
+		}
+
+		$spark_days = array();
+		$spark_max  = 1;
+		for ( $i = 6; $i >= 0; $i-- ) {
+			$day_ts       = strtotime( '-' . $i . ' days', $now_ts );
+			$day_key      = wp_date( 'Y-m-d', $day_ts );
+			$day_short    = wp_date( 'D', $day_ts );
+			$day_count    = isset( $daily_map[ $day_key ] ) ? $daily_map[ $day_key ] : 0;
+			if ( $day_count > $spark_max ) {
+				$spark_max = $day_count;
+			}
+			$spark_days[] = array(
+				'date'  => $day_key,
+				'short' => $day_short,
+				'count' => $day_count,
+			);
+		}
+
+		// 2. Conversions count in last 7 days (uses idx_time).
+		$conversions_7d = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT COUNT(*) FROM `{$conv_table}` WHERE `time` >= %s",
+				$since_7d
+			)
+		);
+
+		// 3. Top 5 referrers over the last 7 days.
+		$top_referrers = $wpdb->get_results(
+			$wpdb->prepare(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT referrer, COUNT(*) AS total FROM `{$logs_table}` WHERE `time` >= %s GROUP BY referrer ORDER BY total DESC LIMIT 5",
+				$since_7d
+			)
+		);
+
+		// 4. Latest 5 conversions.
+		$recent_conversions = $wpdb->get_results(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT id, time, convname, convdesc, referrer, utm_data FROM `{$conv_table}` ORDER BY `time` DESC LIMIT 5"
+		);
+
+		$conv_rate = ( $logs_7d > 0 && $conversions_7d > 0 )
+			? round( ( $conversions_7d / $logs_7d ) * 100, 1 )
+			: 0;
+		?>
+		<div class="cprt-dash-widget">
+			<div class="cprt-dw-topbar">
+				<span class="cprt-dw-range"><?php esc_html_e( 'Last 7 Days', 'cp-referrer-and-conversions-tracking' ); ?></span>
+				<span class="cprt-dw-status <?php echo $tracking_on ? 'is-active' : 'is-paused'; ?>">
+					<span class="cprt-dw-dot" aria-hidden="true"></span>
+					<?php echo $tracking_on ? esc_html__( 'Tracking Active', 'cp-referrer-and-conversions-tracking' ) : esc_html__( 'Tracking Paused', 'cp-referrer-and-conversions-tracking' ); ?>
+				</span>
+			</div>
+
+			<div class="cprt-dw-kpis">
+				<div class="cprt-dw-kpi">
+					<span class="cprt-dw-kpi-label"><?php esc_html_e( 'Referrals (7d)', 'cp-referrer-and-conversions-tracking' ); ?></span>
+					<strong class="cprt-dw-kpi-value cprt-dw-blue"><?php echo esc_html( number_format_i18n( $logs_7d ) ); ?></strong>
+				</div>
+				<div class="cprt-dw-kpi">
+					<span class="cprt-dw-kpi-label"><?php esc_html_e( 'Conversions (7d)', 'cp-referrer-and-conversions-tracking' ); ?></span>
+					<div class="cprt-dw-kpi-row">
+						<strong class="cprt-dw-kpi-value cprt-dw-emerald"><?php echo esc_html( number_format_i18n( $conversions_7d ) ); ?></strong>
+						<?php if ( $conv_rate > 0 ) : ?>
+							<span class="cprt-dw-rate" title="<?php esc_attr_e( '7-day conversions relative to tracked referrals', 'cp-referrer-and-conversions-tracking' ); ?>">
+								<?php echo esc_html( $conv_rate . '%' ); ?>
+							</span>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+
+			<div class="cprt-dw-section">
+				<div class="cprt-dw-section-head">
+					<h4><?php esc_html_e( '7-Day Referral Activity', 'cp-referrer-and-conversions-tracking' ); ?></h4>
+				</div>
+				<div class="cprt-dw-sparkline" role="img" aria-label="<?php esc_attr_e( 'Daily referral counts over the last 7 days', 'cp-referrer-and-conversions-tracking' ); ?>">
+					<svg viewBox="0 0 280 64" width="100%" height="64" preserveAspectRatio="none" aria-hidden="true">
+						<line x1="0" y1="62" x2="280" y2="62" stroke="#e2e8f0" stroke-width="1" />
+						<?php
+						$slot_w = 40;
+						$bar_w  = 22;
+						$max_h  = 50;
+						foreach ( $spark_days as $idx => $day ) :
+							$bar_h = ( $day['count'] > 0 ) ? max( 4, (int) round( ( $day['count'] / $spark_max ) * $max_h ) ) : 2;
+							$bar_x = ( $idx * $slot_w ) + ( ( $slot_w - $bar_w ) / 2 );
+							$bar_y = 61 - $bar_h;
+							$fill  = ( $day['count'] > 0 ) ? ( ( 6 === $idx ) ? '#2563eb' : '#60a5fa' ) : '#e2e8f0';
+							$tip   = sprintf(
+								/* translators: 1: date YYYY-MM-DD, 2: referral count */
+								__( '%1$s: %2$s referrals', 'cp-referrer-and-conversions-tracking' ),
+								$day['date'],
+								number_format_i18n( $day['count'] )
+							);
+							?>
+							<rect x="<?php echo esc_attr( $bar_x ); ?>" y="<?php echo esc_attr( $bar_y ); ?>" width="<?php echo esc_attr( $bar_w ); ?>" height="<?php echo esc_attr( $bar_h ); ?>" rx="3" fill="<?php echo esc_attr( $fill ); ?>">
+								<title><?php echo esc_html( $tip ); ?></title>
+							</rect>
+						<?php endforeach; ?>
+					</svg>
+					<div class="cprt-dw-spark-labels">
+						<?php foreach ( $spark_days as $day ) : ?>
+							<span title="<?php echo esc_attr( $day['date'] . ': ' . $day['count'] ); ?>">
+								<?php echo esc_html( $day['short'] ); ?>
+							</span>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</div>
+
+			<div class="cprt-dw-section">
+				<div class="cprt-dw-section-head">
+					<h4><?php esc_html_e( 'Top Referrers (7d)', 'cp-referrer-and-conversions-tracking' ); ?></h4>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_report' ) ); ?>" class="cprt-dw-more">
+						<?php esc_html_e( 'Full Report', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+					</a>
+				</div>
+				<?php if ( empty( $top_referrers ) ) : ?>
+					<p class="cprt-dw-empty"><?php esc_html_e( 'No incoming referrals recorded in the last 7 days.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+				<?php else : ?>
+					<ul class="cprt-dw-bars">
+						<?php
+						$top_max = max( 1, (int) $top_referrers[0]->total );
+						foreach ( $top_referrers as $ref_row ) :
+							$ref_raw   = (string) $ref_row->referrer;
+							$ref_cnt   = (int) $ref_row->total;
+							$bar_pct   = max( 4, min( 100, (int) round( ( $ref_cnt / $top_max ) * 100 ) ) );
+							$ref_label = $ref_raw;
+							if ( preg_match( '#^https?://#i', $ref_raw ) ) {
+								$parsed_host = wp_parse_url( $ref_raw, PHP_URL_HOST );
+								if ( is_string( $parsed_host ) && '' !== $parsed_host ) {
+									$parsed_path = wp_parse_url( $ref_raw, PHP_URL_PATH );
+									$ref_label   = $parsed_host . ( ( is_string( $parsed_path ) && '/' !== $parsed_path && '' !== $parsed_path ) ? $parsed_path : '' );
+								}
+							}
+							if ( strlen( $ref_label ) > 42 ) {
+								$ref_label = substr( $ref_label, 0, 39 ) . '...';
+							}
+							?>
+							<li>
+								<div class="cprt-dw-bar-meta">
+									<span class="cprt-dw-bar-name" title="<?php echo esc_attr( $ref_raw ); ?>">
+										<?php echo esc_html( '' !== $ref_label ? $ref_label : __( '(unknown)', 'cp-referrer-and-conversions-tracking' ) ); ?>
+									</span>
+									<strong class="cprt-dw-bar-count"><?php echo esc_html( number_format_i18n( $ref_cnt ) ); ?></strong>
+								</div>
+								<div class="cprt-dw-bar-track">
+									<div class="cprt-dw-bar-fill" style="width:<?php echo esc_attr( $bar_pct ); ?>%;"></div>
+								</div>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</div>
+
+			<div class="cprt-dw-section">
+				<div class="cprt-dw-section-head">
+					<h4><?php esc_html_e( 'Recent Conversions', 'cp-referrer-and-conversions-tracking' ); ?></h4>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_conversions' ) ); ?>" class="cprt-dw-more">
+						<?php esc_html_e( 'View All', 'cp-referrer-and-conversions-tracking' ); ?> &rarr;
+					</a>
+				</div>
+				<?php if ( empty( $recent_conversions ) ) : ?>
+					<p class="cprt-dw-empty"><?php esc_html_e( 'No conversions recorded yet. Enable an integration in Add-Ons to track leads and orders.', 'cp-referrer-and-conversions-tracking' ); ?></p>
+				<?php else : ?>
+					<ul class="cprt-dw-conv-list">
+						<?php
+						foreach ( $recent_conversions as $conv_row ) :
+							$conv_ref  = trim( (string) $conv_row->referrer );
+							$conv_utm  = $this->decode_conversion_utm( isset( $conv_row->utm_data ) ? $conv_row->utm_data : '' );
+							$utm_src   = isset( $conv_utm['first']['utm_source'] ) ? $conv_utm['first']['utm_source'] : '';
+							$utm_cmp   = isset( $conv_utm['first']['utm_campaign'] ) ? $conv_utm['first']['utm_campaign'] : '';
+							$src_label = '';
+
+							if ( '' !== $utm_src ) {
+								$src_label = 'UTM: ' . $utm_src . ( '' !== $utm_cmp ? ' / ' . $utm_cmp : '' );
+							} elseif ( '' !== $conv_ref ) {
+								$parsed_host = preg_match( '#^https?://#i', $conv_ref ) ? wp_parse_url( $conv_ref, PHP_URL_HOST ) : '';
+								$src_label   = ( is_string( $parsed_host ) && '' !== $parsed_host ) ? $parsed_host : $conv_ref;
+							} else {
+								$src_label = __( 'Direct / Unknown', 'cp-referrer-and-conversions-tracking' );
+							}
+
+							if ( strlen( $src_label ) > 36 ) {
+								$src_label = substr( $src_label, 0, 33 ) . '...';
+							}
+
+							$conv_ts  = strtotime( (string) $conv_row->time );
+							$time_ago = ( false !== $conv_ts )
+								/* translators: %s: human-readable time difference */
+								? sprintf( __( '%s ago', 'cp-referrer-and-conversions-tracking' ), human_time_diff( $conv_ts, $now_ts ) )
+								: (string) $conv_row->time;
+							?>
+							<li>
+								<div class="cprt-dw-conv-main">
+									<span class="cprt-dw-conv-badge"><?php echo esc_html( (string) $conv_row->convname ); ?></span>
+									<span class="cprt-dw-conv-source" title="<?php echo esc_attr( '' !== $conv_ref ? $conv_ref : $src_label ); ?>">
+										<?php echo esc_html( $src_label ); ?>
+									</span>
+								</div>
+								<span class="cprt-dw-conv-time" title="<?php echo esc_attr( (string) $conv_row->time ); ?>">
+									<?php echo esc_html( $time_ago ); ?>
+								</span>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				<?php endif; ?>
+			</div>
+
+			<div class="cprt-dw-footer">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter ) ); ?>"><?php esc_html_e( 'Dashboard', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<span aria-hidden="true">&middot;</span>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_list' ) ); ?>"><?php esc_html_e( 'Logs', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<span aria-hidden="true">&middot;</span>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_parameters' ) ); ?>"><?php esc_html_e( 'UTM Builder', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<span aria-hidden="true">&middot;</span>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_settings' ) ); ?>"><?php esc_html_e( 'Settings', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<span aria-hidden="true">&middot;</span>
+				<a href="<?php echo esc_url( $this->get_help_url( 'help-dashboard-widget' ) ); ?>"><?php esc_html_e( 'Help', 'cp-referrer-and-conversions-tracking' ); ?></a>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Return the active IP storage mode: 'hash', 'anonymize', or 'full'.
 	 *
 	 * @return string
@@ -651,15 +986,16 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	/**
 	 * Safely set a tracking cookie with modern security attributes unless cookieless mode is active.
 	 *
-	 * @param string $name  Cookie name.
-	 * @param string $value Cookie value.
+	 * @param string $name    Cookie name.
+	 * @param string $value   Cookie value.
+	 * @param int    $max_len Maximum value length.
 	 */
-	protected function set_tracking_cookie( $name, $value ) {
+	protected function set_tracking_cookie( $name, $value, $max_len = 250 ) {
 		if ( $this->is_cookieless_mode() || headers_sent() ) {
 			return;
 		}
 
-		$clean_value = substr( sanitize_text_field( (string) $value ), 0, 250 );
+		$clean_value = substr( sanitize_text_field( (string) $value ), 0, absint( $max_len ) );
 		$expires     = time() + ( $this->cookie_tracking_days * DAY_IN_SECONDS );
 		$path        = ( defined( 'COOKIEPATH' ) && COOKIEPATH ) ? COOKIEPATH : '/';
 
@@ -674,6 +1010,144 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				'samesite' => 'Lax',
 			)
 		);
+	}
+
+	/**
+	 * Safely store a sanitized UTM parameter array in a first-party cookie.
+	 *
+	 * @param string $name       Cookie name ('cprreftrackutm' or 'cprreftrackutmlatest').
+	 * @param array  $utm_params Associative array of UTM parameters.
+	 */
+	protected function set_utm_cookie( $name, $utm_params ) {
+		if ( $this->is_cookieless_mode() || headers_sent() ) {
+			return;
+		}
+
+		$clean = $this->sanitize_utm_params( $utm_params );
+		if ( empty( $clean ) ) {
+			return;
+		}
+
+		$encoded = wp_json_encode( $clean );
+		if ( ! is_string( $encoded ) || '' === $encoded || strlen( $encoded ) > 1000 ) {
+			return;
+		}
+
+		$expires = time() + ( $this->cookie_tracking_days * DAY_IN_SECONDS );
+		$path    = ( defined( 'COOKIEPATH' ) && COOKIEPATH ) ? COOKIEPATH : '/';
+
+		setcookie(
+			$name,
+			$encoded,
+			array(
+				'expires'  => $expires,
+				'path'     => $path,
+				'secure'   => is_ssl(),
+				'httponly' => true,
+				'samesite' => 'Lax',
+			)
+		);
+	}
+
+	/**
+	 * Read and sanitize a JSON-encoded UTM cookie.
+	 *
+	 * @param string $name Cookie name.
+	 * @return array
+	 */
+	protected function get_utm_cookie( $name ) {
+		if ( $this->is_cookieless_mode() || ! isset( $_COOKIE[ $name ] ) || is_array( $_COOKIE[ $name ] ) ) {
+			return array();
+		}
+
+		$raw     = (string) wp_unslash( $_COOKIE[ $name ] );
+		$decoded = json_decode( $raw, true );
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
+			return array();
+		}
+
+		return $this->sanitize_utm_params( $decoded );
+	}
+
+	/**
+	 * Extract and sanitize standard UTM parameters from the current GET query string.
+	 *
+	 * @return array
+	 */
+	public function extract_utm_params_from_request() {
+		if ( empty( $_GET ) || ! is_array( $_GET ) ) {
+			return array();
+		}
+
+		$raw = array();
+		foreach ( $this->get_utm_keys() as $key ) {
+			if ( isset( $_GET[ $key ] ) && ! is_array( $_GET[ $key ] ) ) {
+				$raw[ $key ] = wp_unslash( $_GET[ $key ] );
+			}
+		}
+
+		return $this->sanitize_utm_params( $raw );
+	}
+
+	/**
+	 * Build a readable referrer label when a visit arrives with UTM parameters but no external HTTP referer.
+	 *
+	 * @param array $utm_params Sanitized UTM parameter array.
+	 * @return string
+	 */
+	public function format_utm_referrer_label( $utm_params ) {
+		$clean = $this->sanitize_utm_params( $utm_params );
+		if ( empty( $clean ) ) {
+			return '';
+		}
+
+		$segments = array();
+		foreach ( array( 'utm_source', 'utm_medium', 'utm_campaign' ) as $primary_key ) {
+			if ( isset( $clean[ $primary_key ] ) ) {
+				$segments[] = $clean[ $primary_key ];
+			}
+		}
+
+		if ( empty( $segments ) ) {
+			$segments = array_values( $clean );
+		}
+
+		$label = 'UTM: ' . implode( ' / ', $segments );
+		$label = (string) apply_filters( 'cpreftrack_utm_referrer_label', $label, $clean );
+
+		return substr( sanitize_text_field( $label ), 0, 250 );
+	}
+
+	/**
+	 * Match custom referral rules configured under Referral Sources against current GET parameters.
+	 *
+	 * @return string Matched custom referral name or empty string.
+	 */
+	protected function match_custom_campaign_param() {
+		global $wpdb;
+
+		if ( empty( $_GET ) ) {
+			return '';
+		}
+
+		$items_table = $wpdb->prefix . $this->table_items;
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$events = $wpdb->get_results( "SELECT paramname, paramvalue, refname FROM `{$items_table}`" );
+		if ( ! is_array( $events ) ) {
+			return '';
+		}
+
+		foreach ( $events as $event ) {
+			$pname = (string) $event->paramname;
+			if ( '' !== $pname && isset( $_GET[ $pname ] ) && ! is_array( $_GET[ $pname ] ) ) {
+				$pval = sanitize_text_field( wp_unslash( $_GET[ $pname ] ) );
+				if ( $pval === (string) $event->paramvalue ) {
+					return sanitize_text_field( (string) $event->refname );
+				}
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -731,7 +1205,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
-	 * Frontend visitor referrer tracking handler.
+	 * Frontend visitor referrer and native UTM tracking handler.
 	 */
 	public function data_management() {
 		global $wpdb;
@@ -755,67 +1229,98 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$compare_ref  = $this->normalize_url_for_compare( $referrer_browser );
 		$is_external  = ( '' !== $referrer_browser && substr( $compare_ref . '/', 0, strlen( $local_domain ) ) !== $local_domain );
 
+		$utm_enabled = $this->is_utm_tracking_enabled();
+		$utm_params  = $utm_enabled ? $this->extract_utm_params_from_request() : array();
+		$has_utm     = ! empty( $utm_params );
+
 		$cookie_ref = ( ! $this->is_cookieless_mode() && isset( $_COOKIE['cprreftrack'] ) )
 			? sanitize_text_field( wp_unslash( $_COOKIE['cprreftrack'] ) )
 			: '';
 
+		// Returning visitor with an already established cookie.
 		if (
 			( '' !== $cookie_ref && 'na' !== $cookie_ref && $cookie_ref !== $this->no_ref_indicator ) ||
 			( $cookie_ref === $this->no_ref_indicator && '' === $referrer_browser && empty( $_GET ) )
 		) {
-			if ( $is_external ) {
-				$this->set_tracking_cookie( 'cprreftracklatest', $referrer_browser );
+			if ( $cookie_ref !== $this->no_ref_indicator ) {
+				$latest_ref = '';
+				if ( ! empty( $_GET ) ) {
+					$latest_ref = $this->match_custom_campaign_param();
+				}
+				if ( '' === $latest_ref && $is_external ) {
+					$latest_ref = $referrer_browser;
+				}
+				if ( '' === $latest_ref && $has_utm ) {
+					$latest_ref = $this->format_utm_referrer_label( $utm_params );
+				}
+
+				if ( '' !== $latest_ref && $latest_ref !== $cookie_ref ) {
+					$this->runtime_latest_ref = substr( sanitize_text_field( $latest_ref ), 0, 250 );
+					$this->set_tracking_cookie( 'cprreftracklatest', $latest_ref );
+				}
+				if ( $has_utm ) {
+					$this->runtime_latest_utm = $utm_params;
+					$this->set_utm_cookie( 'cprreftrackutmlatest', $utm_params );
+				}
 			}
 			return;
 		}
 
-		$referrer = '';
-
-		// Match custom campaign query parameters first.
-		if ( ! empty( $_GET ) ) {
-			$items_table = $wpdb->prefix . $this->table_items;
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$events = $wpdb->get_results( "SELECT paramname, paramvalue, refname FROM `{$items_table}`" );
-			if ( is_array( $events ) ) {
-				foreach ( $events as $event ) {
-					$pname = $event->paramname;
-					if ( '' !== $pname && isset( $_GET[ $pname ] ) && ! is_array( $_GET[ $pname ] ) ) {
-						$pval = sanitize_text_field( wp_unslash( $_GET[ $pname ] ) );
-						if ( $pval === $event->paramvalue ) {
-							$referrer = sanitize_text_field( $event->refname );
-							break;
-						}
-					}
-				}
-			}
-		}
+		// Determine referrer priority: 1) Custom rule, 2) External HTTP Referer, 3) Native UTM label.
+		$referrer = $this->match_custom_campaign_param();
 
 		if ( '' === $referrer ) {
-			if ( ! $is_external ) {
+			if ( $is_external ) {
+				$referrer = $referrer_browser;
+			} elseif ( $has_utm ) {
+				$referrer = $this->format_utm_referrer_label( $utm_params );
+			} else {
 				if ( '' === $referrer_browser ) {
 					$this->set_tracking_cookie( 'cprreftrack', $this->no_ref_indicator );
 				}
 				return;
 			}
-			$referrer = $referrer_browser;
 		}
 
 		$visitor_id = $this->get_visitor_identifier();
 		$logs_table = $wpdb->prefix . $this->table_messages;
 
-		// Keep original first-touch referrer if visitor is already logged.
+		// Keep original first-touch referrer & UTM data if visitor is already logged.
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$existing_ref = $wpdb->get_var( $wpdb->prepare( "SELECT referrer FROM `{$logs_table}` WHERE id = %s LIMIT 1", $visitor_id ) );
-		if ( null !== $existing_ref ) {
+		$existing_row = $wpdb->get_row( $wpdb->prepare( "SELECT referrer, data FROM `{$logs_table}` WHERE id = %s LIMIT 1", $visitor_id ) );
+		if ( $existing_row ) {
+			$existing_ref = (string) $existing_row->referrer;
 			$this->set_tracking_cookie( 'cprreftrack', $existing_ref );
+
 			if ( '' !== $referrer && $referrer !== $existing_ref ) {
+				$this->runtime_latest_ref = substr( sanitize_text_field( $referrer ), 0, 250 );
 				$this->set_tracking_cookie( 'cprreftracklatest', $referrer );
+			}
+
+			$existing_data = $this->decode_log_data( $existing_row->data );
+			$existing_utm  = isset( $existing_data['utm'] ) ? $this->sanitize_utm_params( $existing_data['utm'] ) : array();
+			if ( ! empty( $existing_utm ) ) {
+				$this->set_utm_cookie( 'cprreftrackutm', $existing_utm );
+			}
+			if ( $has_utm && $utm_params !== $existing_utm ) {
+				$this->runtime_latest_utm = $utm_params;
+				$this->set_utm_cookie( 'cprreftrackutmlatest', $utm_params );
 			}
 			return;
 		}
 
 		$clean_referrer = substr( sanitize_text_field( $referrer ), 0, 250 );
 		$this->set_tracking_cookie( 'cprreftrack', $clean_referrer );
+		if ( $has_utm ) {
+			$this->set_utm_cookie( 'cprreftrackutm', $utm_params );
+		}
+
+		$log_payload = array(
+			'entry' => substr( $entry_page, 0, 250 ),
+		);
+		if ( $has_utm ) {
+			$log_payload['utm'] = $utm_params;
+		}
 
 		$wpdb->insert(
 			$logs_table,
@@ -823,7 +1328,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				'id'       => $visitor_id,
 				'time'     => current_time( 'mysql' ),
 				'referrer' => $clean_referrer,
-				'data'     => wp_json_encode( array( 'entry' => substr( $entry_page, 0, 250 ) ) ),
+				'data'     => wp_json_encode( $log_payload ),
 			),
 			array( '%s', '%s', '%s', '%s' )
 		);
@@ -837,6 +1342,79 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	 */
 	public function referrer_filter( $ref = '' ) {
 		return $this->get_referrer();
+	}
+
+	/**
+	 * Filter callback returning the current visitor's recorded first-touch UTM parameters.
+	 *
+	 * @param array $utm Default value.
+	 * @return array
+	 */
+	public function utm_data_filter( $utm = array() ) {
+		return $this->get_utm_data();
+	}
+
+	/**
+	 * Filter callback returning the current visitor's full attribution payload.
+	 *
+	 * @param array $attribution Default value.
+	 * @return array
+	 */
+	public function attribution_data_filter( $attribution = array() ) {
+		return $this->get_visitor_attribution();
+	}
+
+	/**
+	 * Look up the most recent (last-touch) referrer from the current session.
+	 *
+	 * @return string
+	 */
+	public function get_latest_referrer() {
+		if ( '' !== $this->runtime_latest_ref ) {
+			return $this->runtime_latest_ref;
+		}
+		if ( ! $this->is_cookieless_mode() && isset( $_COOKIE['cprreftracklatest'] ) && ! is_array( $_COOKIE['cprreftracklatest'] ) ) {
+			return substr( sanitize_text_field( wp_unslash( $_COOKIE['cprreftracklatest'] ) ), 0, 250 );
+		}
+		return '';
+	}
+
+	/**
+	 * Retrieve the complete attribution snapshot for the current visitor.
+	 *
+	 * @param string $ip Optional explicit IP address or visitor ID.
+	 * @return array{referrer: string, referrer_last: string, entry: string, utm_first: array, utm_last: array}
+	 */
+	public function get_visitor_attribution( $ip = '' ) {
+		$first_ref = $this->get_referrer( $ip );
+		$last_ref  = ( '' === $ip ) ? $this->get_latest_referrer() : '';
+		if ( '' !== $last_ref && $last_ref === $first_ref ) {
+			$last_ref = '';
+		}
+
+		$entry = $this->get_entry( $ip );
+		if ( '' === $entry && '' === $ip && isset( $_SERVER['REQUEST_URI'] ) ) {
+			$entry = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+		}
+		$entry = substr( $entry, 0, 250 );
+
+		$utm_first = array();
+		$utm_last  = array();
+		if ( $this->is_utm_tracking_enabled() ) {
+			$utm_first = $this->get_utm_data( $ip );
+			$raw_last  = ( '' === $ip ) ? $this->get_latest_utm_data() : array();
+			if ( ! empty( $raw_last ) && $raw_last !== $utm_first ) {
+				$utm_last = $raw_last;
+			}
+		}
+
+		return array(
+			'referrer'      => substr( sanitize_text_field( (string) $first_ref ), 0, 250 ),
+			'referrer_last' => substr( sanitize_text_field( (string) $last_ref ), 0, 250 ),
+			'entry'         => $entry,
+			'utm_first'     => $utm_first,
+			'utm_last'      => $utm_last,
+		);
 	}
 
 	/**
@@ -866,13 +1444,12 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
-	 * Look up the initial entry page URI for a visitor.
+	 * Look up the decoded log metadata array for a visitor.
 	 *
-	 * @param string $ip     Optional IP address or visitor ID.
-	 * @param string $cookie Unused legacy parameter.
-	 * @return string
+	 * @param string $ip Optional IP address or visitor ID.
+	 * @return array
 	 */
-	public function get_entry( $ip = '', $cookie = '' ) {
+	protected function get_visitor_log_data( $ip = '' ) {
 		global $wpdb;
 
 		$raw_ip     = '' !== $ip ? sanitize_text_field( (string) $ip ) : $this->get_client_ip();
@@ -888,15 +1465,60 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		}
 
 		if ( ! is_string( $raw_data ) || '' === $raw_data ) {
-			return '';
+			return array();
 		}
 
-		$data = $this->decode_log_data( $raw_data );
+		return $this->decode_log_data( $raw_data );
+	}
+
+	/**
+	 * Look up the initial entry page URI for a visitor.
+	 *
+	 * @param string $ip     Optional IP address or visitor ID.
+	 * @param string $cookie Unused legacy parameter.
+	 * @return string
+	 */
+	public function get_entry( $ip = '', $cookie = '' ) {
+		$data = $this->get_visitor_log_data( $ip );
 		return isset( $data['entry'] ) ? (string) $data['entry'] : '';
 	}
 
 	/**
-	 * Record a conversion event with first-touch and last-touch referrers.
+	 * Look up the first-touch UTM parameters for a visitor.
+	 *
+	 * @param string $ip Optional IP address or visitor ID.
+	 * @return array
+	 */
+	public function get_utm_data( $ip = '' ) {
+		$data = $this->get_visitor_log_data( $ip );
+		if ( isset( $data['utm'] ) && is_array( $data['utm'] ) ) {
+			$utm = $this->sanitize_utm_params( $data['utm'] );
+			if ( ! empty( $utm ) ) {
+				return $utm;
+			}
+		}
+
+		if ( '' === $ip ) {
+			return $this->get_utm_cookie( 'cprreftrackutm' );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Look up the most recent (last-touch) UTM parameters from the current session cookie.
+	 *
+	 * @return array
+	 */
+	public function get_latest_utm_data() {
+		if ( ! empty( $this->runtime_latest_utm ) ) {
+			return $this->runtime_latest_utm;
+		}
+		return $this->get_utm_cookie( 'cprreftrackutmlatest' );
+	}
+
+	/**
+	 * Record a conversion event with first-touch/last-touch referrers and UTM attribution.
 	 *
 	 * @param string $conversion_name        Conversion type identifier.
 	 * @param string $conversion_description Conversion summary or ID string.
@@ -909,9 +1531,11 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$clean_desc = wp_kses_post( (string) $conversion_description );
 		$clean_ref  = '' !== $referrer ? substr( sanitize_text_field( (string) $referrer ), 0, 250 ) : $this->get_referrer();
 
-		$latest_cookie = ( ! $this->is_cookieless_mode() && isset( $_COOKIE['cprreftracklatest'] ) )
-			? sanitize_text_field( wp_unslash( $_COOKIE['cprreftracklatest'] ) )
-			: '';
+		$latest_cookie = '' !== $this->runtime_latest_ref
+			? $this->runtime_latest_ref
+			: ( ( ! $this->is_cookieless_mode() && isset( $_COOKIE['cprreftracklatest'] ) )
+				? sanitize_text_field( wp_unslash( $_COOKIE['cprreftracklatest'] ) )
+				: '' );
 		$referrer_last = ( '' !== $latest_cookie && $clean_ref !== $latest_cookie ) ? substr( $latest_cookie, 0, 250 ) : '';
 
 		$entry = $this->get_entry();
@@ -919,6 +1543,24 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 			$entry = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
 		}
 		$entry = substr( $entry, 0, 250 );
+
+		$utm_json = '';
+		if ( $this->is_utm_tracking_enabled() ) {
+			$first_utm   = $this->get_utm_data();
+			$last_utm    = $this->get_latest_utm_data();
+			$utm_payload = array();
+
+			if ( ! empty( $first_utm ) ) {
+				$utm_payload['first'] = $first_utm;
+			}
+			if ( ! empty( $last_utm ) && $last_utm !== $first_utm ) {
+				$utm_payload['last'] = $last_utm;
+			}
+			if ( ! empty( $utm_payload ) ) {
+				$encoded  = wp_json_encode( $utm_payload );
+				$utm_json = is_string( $encoded ) ? $encoded : '';
+			}
+		}
 
 		$table = $wpdb->prefix . $this->table_conversions;
 		$wpdb->insert(
@@ -929,9 +1571,10 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				'referrer'     => $clean_ref,
 				'referrerlast' => $referrer_last,
 				'entry'        => $entry,
+				'utm_data'     => $utm_json,
 				'time'         => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 	}
 
@@ -943,9 +1586,10 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 			return;
 		}
 
-		$days       = max( 1, absint( get_option( 'cp_cpreftrack_rep_days', 90 ) ) );
-		$ip_mode    = $this->get_ip_storage_mode();
-		$cookieless = $this->is_cookieless_mode();
+		$days        = max( 1, absint( get_option( 'cp_cpreftrack_rep_days', 90 ) ) );
+		$ip_mode     = $this->get_ip_storage_mode();
+		$cookieless  = $this->is_cookieless_mode();
+		$utm_enabled = $this->is_utm_tracking_enabled();
 
 		if ( 'hash' === $ip_mode ) {
 			$ip_text = __( 'Visitor IP addresses are converted into a one-way salted cryptographic hash before storage so raw IP addresses are not stored.', 'cp-referrer-and-conversions-tracking' );
@@ -956,13 +1600,15 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		}
 
 		if ( $cookieless ) {
-			$cookie_text = __( 'This site runs referrer tracking in cookieless mode and does not set referral tracking cookies.', 'cp-referrer-and-conversions-tracking' );
+			$cookie_text = __( 'This site runs referrer tracking in cookieless mode and does not set referral or UTM tracking cookies.', 'cp-referrer-and-conversions-tracking' );
+		} elseif ( $utm_enabled ) {
+			$cookie_text = __( 'First-party cookies (cprreftrack, cprreftracklatest, cprreftrackutm, and cprreftrackutmlatest) may be set for 24 hours to preserve first-touch and last-touch referral and UTM campaign attribution.', 'cp-referrer-and-conversions-tracking' );
 		} else {
 			$cookie_text = __( 'Two first-party cookies (cprreftrack and cprreftracklatest) may be set for 24 hours to preserve first-touch and last-touch referral attribution.', 'cp-referrer-and-conversions-tracking' );
 		}
 
 		$content  = '<h3>' . esc_html__( 'Referrer and Conversion Tracking', 'cp-referrer-and-conversions-tracking' ) . '</h3>';
-		$content .= '<p>' . esc_html__( 'When you arrive on this website from an external link or marketing campaign URL, we record the referring website or campaign identifier, landing page path, and visit timestamp to measure marketing performance.', 'cp-referrer-and-conversions-tracking' ) . ' ' . esc_html( $ip_text ) . '</p>';
+		$content .= '<p>' . esc_html__( 'When you arrive on this website from an external link or marketing campaign URL (including standard UTM parameters such as utm_source, utm_medium, and utm_campaign), we record the referring website or campaign parameters, landing page path, and visit timestamp to measure marketing performance.', 'cp-referrer-and-conversions-tracking' ) . ' ' . esc_html( $ip_text ) . '</p>';
 		$content .= '<p>' . esc_html( $cookie_text ) . ' ';
 		$content .= sprintf(
 			/* translators: %d: retention days */
@@ -1032,43 +1678,59 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				"SELECT id, time, convname, convdesc, referrer, referrerlast, entry FROM `{$table}` WHERE {$where} ORDER BY id ASC LIMIT %d OFFSET %d",
+				"SELECT id, time, convname, convdesc, referrer, referrerlast, entry, utm_data FROM `{$table}` WHERE {$where} ORDER BY id ASC LIMIT %d OFFSET %d",
 				$params
 			)
 		);
 
 		if ( is_array( $rows ) ) {
 			foreach ( $rows as $row ) {
+				$utm_decoded = $this->decode_conversion_utm( isset( $row->utm_data ) ? $row->utm_data : '' );
+				$item_data   = array(
+					array(
+						'name'  => __( 'Timestamp', 'cp-referrer-and-conversions-tracking' ),
+						'value' => (string) $row->time,
+					),
+					array(
+						'name'  => __( 'Conversion Type', 'cp-referrer-and-conversions-tracking' ),
+						'value' => (string) $row->convname,
+					),
+					array(
+						'name'  => __( 'Details', 'cp-referrer-and-conversions-tracking' ),
+						'value' => wp_strip_all_tags( (string) $row->convdesc ),
+					),
+					array(
+						'name'  => __( 'First Referrer', 'cp-referrer-and-conversions-tracking' ),
+						'value' => (string) $row->referrer,
+					),
+					array(
+						'name'  => __( 'Last Referrer', 'cp-referrer-and-conversions-tracking' ),
+						'value' => (string) $row->referrerlast,
+					),
+					array(
+						'name'  => __( 'Entry Page', 'cp-referrer-and-conversions-tracking' ),
+						'value' => (string) $row->entry,
+					),
+				);
+
+				if ( ! empty( $utm_decoded['first'] ) ) {
+					$item_data[] = array(
+						'name'  => __( 'First-Touch UTM', 'cp-referrer-and-conversions-tracking' ),
+						'value' => $this->format_utm_plain_text( $utm_decoded['first'] ),
+					);
+				}
+				if ( ! empty( $utm_decoded['last'] ) ) {
+					$item_data[] = array(
+						'name'  => __( 'Last-Touch UTM', 'cp-referrer-and-conversions-tracking' ),
+						'value' => $this->format_utm_plain_text( $utm_decoded['last'] ),
+					);
+				}
+
 				$export_items[] = array(
 					'group_id'    => 'cp-reftrack-conversions',
 					'group_label' => __( 'Conversion Attribution Records', 'cp-referrer-and-conversions-tracking' ),
 					'item_id'     => 'cp-reftrack-conversion-' . absint( $row->id ),
-					'data'        => array(
-						array(
-							'name'  => __( 'Timestamp', 'cp-referrer-and-conversions-tracking' ),
-							'value' => (string) $row->time,
-						),
-						array(
-							'name'  => __( 'Conversion Type', 'cp-referrer-and-conversions-tracking' ),
-							'value' => (string) $row->convname,
-						),
-						array(
-							'name'  => __( 'Details', 'cp-referrer-and-conversions-tracking' ),
-							'value' => wp_strip_all_tags( (string) $row->convdesc ),
-						),
-						array(
-							'name'  => __( 'First Referrer', 'cp-referrer-and-conversions-tracking' ),
-							'value' => (string) $row->referrer,
-						),
-						array(
-							'name'  => __( 'Last Referrer', 'cp-referrer-and-conversions-tracking' ),
-							'value' => (string) $row->referrerlast,
-						),
-						array(
-							'name'  => __( 'Entry Page', 'cp-referrer-and-conversions-tracking' ),
-							'value' => (string) $row->entry,
-						),
-					),
+					'data'        => $item_data,
 				);
 			}
 		}
@@ -1196,7 +1858,7 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 	}
 
 	/**
-	 * Export filtered tracking logs as a UTF-8 CSV file with formula-injection protection.
+	 * Export filtered tracking logs as a UTF-8 CSV file with UTM columns and formula-injection protection.
 	 */
 	public function export_csv() {
 		$this->require_manage_access();
@@ -1242,7 +1904,17 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 		$exclude_raw    = get_option( 'cp_cpreftrack_bocsvexclude', '' );
 		$fields_exclude = array_filter( array_map( 'strtolower', array_map( 'trim', explode( ',', (string) $exclude_raw ) ) ) );
 
-		$base_fields = array( 'Visitor ID', 'Time', 'Referrer', 'Entry Page' );
+		$base_fields = array(
+			'Visitor ID',
+			'Time',
+			'Referrer',
+			'Entry Page',
+			'UTM Source',
+			'UTM Medium',
+			'UTM Campaign',
+			'UTM Term',
+			'UTM Content',
+		);
 		$extra_keys  = array();
 		$rows        = array();
 
@@ -1250,7 +1922,8 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 			foreach ( $events as $item ) {
 				$decoded = $this->decode_log_data( $item->data );
 				$entry   = isset( $decoded['entry'] ) ? (string) $decoded['entry'] : '';
-				unset( $decoded['entry'], $decoded['apps'], $decoded['itemnumber'] );
+				$utm     = isset( $decoded['utm'] ) ? $this->sanitize_utm_params( $decoded['utm'] ) : array();
+				unset( $decoded['entry'], $decoded['utm'], $decoded['apps'], $decoded['itemnumber'] );
 
 				foreach ( $decoded as $k => $v ) {
 					if ( ! in_array( strtolower( (string) $k ), $fields_exclude, true ) && ! in_array( $k, $extra_keys, true ) ) {
@@ -1259,11 +1932,16 @@ class CP_REFTRACK_Plugin extends CP_REFTRACK_BaseClass {
 				}
 
 				$rows[] = array(
-					'Visitor ID' => (string) $item->id,
-					'Time'       => (string) $item->time,
-					'Referrer'   => (string) $item->referrer,
-					'Entry Page' => $entry,
-					'_extra'     => $decoded,
+					'Visitor ID'   => (string) $item->id,
+					'Time'         => (string) $item->time,
+					'Referrer'     => (string) $item->referrer,
+					'Entry Page'   => $entry,
+					'UTM Source'   => isset( $utm['utm_source'] ) ? $utm['utm_source'] : '',
+					'UTM Medium'   => isset( $utm['utm_medium'] ) ? $utm['utm_medium'] : '',
+					'UTM Campaign' => isset( $utm['utm_campaign'] ) ? $utm['utm_campaign'] : '',
+					'UTM Term'     => isset( $utm['utm_term'] ) ? $utm['utm_term'] : '',
+					'UTM Content'  => isset( $utm['utm_content'] ) ? $utm['utm_content'] : '',
+					'_extra'       => $decoded,
 				);
 			}
 		}

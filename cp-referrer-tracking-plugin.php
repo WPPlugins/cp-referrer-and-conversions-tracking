@@ -2,8 +2,8 @@
 /**
  * Plugin Name: CP Referrer and Conversion Tracking
  * Plugin URI: https://wordpress.dwbooster.com/
- * Description: Track visitor referral sources, campaign links, analytics, and third-party plugin conversions with built-in GDPR privacy controls.
- * Version: 2.0.9
+ * Description: Track visitor referral sources, native UTM campaign parameters, analytics, and third-party plugin conversions with built-in GDPR privacy controls.
+ * Version: 2.1.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Author: CodePeople
@@ -19,11 +19,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'CPREFTRACK_VERSION' ) ) {
-	define( 'CPREFTRACK_VERSION', '2.0.0' );
+	define( 'CPREFTRACK_VERSION', '2.1.0' );
 }
 
 if ( ! defined( 'CPREFTRACK_DB_VERSION' ) ) {
-	define( 'CPREFTRACK_DB_VERSION', '2.0.0' );
+	define( 'CPREFTRACK_DB_VERSION', '2.1.0' );
 }
 
 if ( ! defined( 'CPREFTRACK_PLUGIN_FILE' ) ) {
@@ -106,6 +106,18 @@ add_action( 'plugins_loaded', 'cpreftrack_loading_add_ons', 20 );
 add_action( 'init', array( $cp_reftrack_plugin, 'data_management' ) );
 add_action( 'cpreftrack_register_conversion', array( $cp_reftrack_plugin, 'register_conversion' ), 10, 3 );
 add_filter( 'cpreftrack_referrer', array( $cp_reftrack_plugin, 'referrer_filter' ), 10, 1 );
+add_filter( 'cpreftrack_utm_data', array( $cp_reftrack_plugin, 'utm_data_filter' ), 10, 1 );
+add_filter( 'cpreftrack_attribution_data', array( $cp_reftrack_plugin, 'attribution_data_filter' ), 10, 1 );
+
+// Declare WooCommerce HPOS (Custom Order Tables) compatibility.
+add_action(
+	'before_woocommerce_init',
+	function () {
+		if ( class_exists( '\Automattic\WooCommerce\Utilities\FeaturesUtil' ) ) {
+			\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', CPREFTRACK_PLUGIN_FILE, true );
+		}
+	}
+);
 
 // Cron setup to prune old tracking logs.
 add_filter( 'cron_schedules', array( $cp_reftrack_plugin, 'isa_add_cron_recurrence_interval' ) );
@@ -120,6 +132,7 @@ if ( is_admin() ) {
 	add_action( 'admin_init', array( $cp_reftrack_plugin, 'handle_admin_actions' ) );
 	add_action( 'admin_init', array( $cp_reftrack_plugin, 'register_privacy_policy_content' ) );
 	add_action( 'admin_enqueue_scripts', array( $cp_reftrack_plugin, 'insert_adminScripts' ), 10 );
+	add_action( 'wp_dashboard_setup', array( $cp_reftrack_plugin, 'register_dashboard_widget' ) );
 	add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $cp_reftrack_plugin, 'plugin_page_links' ) );
 	add_action( 'admin_menu', array( $cp_reftrack_plugin, 'admin_menu' ) );
 }

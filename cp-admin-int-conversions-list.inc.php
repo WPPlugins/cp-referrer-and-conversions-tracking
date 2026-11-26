@@ -24,7 +24,8 @@ $params  = array();
 
 if ( '' !== $search_value ) {
 	$like      = '%' . $wpdb->esc_like( $search_value ) . '%';
-	$clauses[] = '(convdesc LIKE %s OR convname LIKE %s OR referrer LIKE %s OR referrerlast LIKE %s)';
+	$clauses[] = '(convdesc LIKE %s OR convname LIKE %s OR referrer LIKE %s OR referrerlast LIKE %s OR utm_data LIKE %s)';
+	$params[]  = $like;
 	$params[]  = $like;
 	$params[]  = $like;
 	$params[]  = $like;
@@ -63,7 +64,7 @@ $data_params[] = $offset;
 $events = $wpdb->get_results(
 	$wpdb->prepare(
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		"SELECT id, time, convname, convdesc, referrer, entry, referrerlast FROM `{$table}` WHERE {$where_sql} ORDER BY `time` DESC LIMIT %d OFFSET %d",
+		"SELECT id, time, convname, convdesc, referrer, entry, referrerlast, utm_data FROM `{$table}` WHERE {$where_sql} ORDER BY `time` DESC LIMIT %d OFFSET %d",
 		$data_params
 	)
 );
@@ -86,7 +87,7 @@ $this->render_admin_header(
 
 			<div class="cprt-field cprt-field-grow">
 				<label for="cprt-conv-search"><?php esc_html_e( 'Search', 'cp-referrer-and-conversions-tracking' ); ?></label>
-				<input type="search" id="cprt-conv-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Conversion type, order/form details, or referrer...', 'cp-referrer-and-conversions-tracking' ); ?>" />
+				<input type="search" id="cprt-conv-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Conversion type, order/form details, referrer, or UTM campaign...', 'cp-referrer-and-conversions-tracking' ); ?>" />
 			</div>
 
 			<div class="cprt-field">
@@ -143,7 +144,7 @@ $this->render_admin_header(
 						<th><?php esc_html_e( 'Timestamp', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th><?php esc_html_e( 'Conversion', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th><?php esc_html_e( 'Details', 'cp-referrer-and-conversions-tracking' ); ?></th>
-						<th><?php esc_html_e( 'Attribution & Entry', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'Attribution, UTM & Entry', 'cp-referrer-and-conversions-tracking' ); ?></th>
 						<th class="cprt-col-actions cprt-no-print"><?php esc_html_e( 'Actions', 'cp-referrer-and-conversions-tracking' ); ?></th>
 					</tr>
 				</thead>
@@ -163,6 +164,10 @@ $this->render_admin_header(
 							$raw_entry        = isset( $row->entry ) ? (string) $row->entry : '';
 							$entry_url        = $this->format_entry_url( $raw_entry );
 							$entry_lbl        = ( strlen( $raw_entry ) > 42 ) ? '...' . substr( $raw_entry, -39 ) : $raw_entry;
+							$utm              = $this->decode_conversion_utm( isset( $row->utm_data ) ? $row->utm_data : '' );
+							$first_utm_html   = $this->render_utm_badges_html( $utm['first'], 'first' );
+							$last_utm_html    = $this->render_utm_badges_html( $utm['last'], 'last' );
+							$has_attribution  = ( '' !== $ref || '' !== $first_utm_html || '' !== $last_utm_html );
 							?>
 							<tr>
 								<td class="cprt-col-check cprt-no-print">
@@ -173,8 +178,8 @@ $this->render_admin_header(
 								<td><span class="cprt-badge cprt-badge-emerald"><?php echo esc_html( $row->convname ); ?></span></td>
 								<td class="cprt-break-word"><?php echo wp_kses( $filtered_details, $allowed_html ); ?></td>
 								<td class="cprt-break-word">
-									<?php if ( '' !== $ref ) : ?>
-										<div class="cprt-attr-block">
+									<div class="cprt-attr-block">
+										<?php if ( '' !== $ref ) : ?>
 											<div>
 												<span class="cprt-attr-label"><?php esc_html_e( 'First referrer:', 'cp-referrer-and-conversions-tracking' ); ?></span>
 												<?php if ( preg_match( '#^https?://#i', $ref ) ) : ?>
@@ -183,26 +188,42 @@ $this->render_admin_header(
 													<strong><?php echo esc_html( $ref ); ?></strong>
 												<?php endif; ?>
 											</div>
-											<?php if ( '' !== $reflast && $ref !== $reflast ) : ?>
-												<div class="cprt-text-muted">
-													<span class="cprt-attr-label"><?php esc_html_e( 'Last referrer:', 'cp-referrer-and-conversions-tracking' ); ?></span>
-													<?php echo esc_html( $reflast ); ?>
-												</div>
-											<?php endif; ?>
-											<?php if ( '' !== $raw_entry ) : ?>
-												<div>
-													<span class="cprt-attr-label"><?php esc_html_e( 'Entry page:', 'cp-referrer-and-conversions-tracking' ); ?></span>
-													<?php if ( '' !== $entry_url ) : ?>
-														<a href="<?php echo esc_url( $entry_url ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $raw_entry ); ?>" class="cprt-link"><?php echo esc_html( $entry_lbl ); ?></a>
-													<?php else : ?>
-														<span><?php echo esc_html( $entry_lbl ); ?></span>
-													<?php endif; ?>
-												</div>
-											<?php endif; ?>
-										</div>
-									<?php else : ?>
-										<span class="cprt-text-muted"><?php esc_html_e( 'Direct / Unknown referrer', 'cp-referrer-and-conversions-tracking' ); ?></span>
-									<?php endif; ?>
+										<?php elseif ( ! $has_attribution ) : ?>
+											<span class="cprt-text-muted"><?php esc_html_e( 'Direct / Unknown referrer', 'cp-referrer-and-conversions-tracking' ); ?></span>
+										<?php endif; ?>
+
+										<?php if ( '' !== $reflast && $ref !== $reflast ) : ?>
+											<div class="cprt-text-muted">
+												<span class="cprt-attr-label"><?php esc_html_e( 'Last referrer:', 'cp-referrer-and-conversions-tracking' ); ?></span>
+												<?php echo esc_html( $reflast ); ?>
+											</div>
+										<?php endif; ?>
+
+										<?php if ( '' !== $first_utm_html ) : ?>
+											<div class="cprt-attr-utm-row">
+												<span class="cprt-attr-label"><?php esc_html_e( 'First UTM:', 'cp-referrer-and-conversions-tracking' ); ?></span>
+												<?php echo wp_kses_post( $first_utm_html ); ?>
+											</div>
+										<?php endif; ?>
+
+										<?php if ( '' !== $last_utm_html ) : ?>
+											<div class="cprt-attr-utm-row">
+												<span class="cprt-attr-label"><?php esc_html_e( 'Last UTM:', 'cp-referrer-and-conversions-tracking' ); ?></span>
+												<?php echo wp_kses_post( $last_utm_html ); ?>
+											</div>
+										<?php endif; ?>
+
+										<?php if ( '' !== $raw_entry ) : ?>
+											<div>
+												<span class="cprt-attr-label"><?php esc_html_e( 'Entry page:', 'cp-referrer-and-conversions-tracking' ); ?></span>
+												<?php if ( '' !== $entry_url ) : ?>
+													<a href="<?php echo esc_url( $entry_url ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $raw_entry ); ?>" class="cprt-link"><?php echo esc_html( $entry_lbl ); ?></a>
+												<?php else : ?>
+													<span><?php echo esc_html( $entry_lbl ); ?></span>
+												<?php endif; ?>
+											</div>
+										<?php endif; ?>
+									</div>
 								</td>
 								<td class="cprt-col-actions cprt-no-print">
 									<button type="button"

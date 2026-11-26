@@ -19,7 +19,7 @@ if ( ! class_exists( 'CPREFTRACK_UserRegistration' ) ) {
 		protected $conversion_details_prefix       = 'USER ID: ';
 
 		public function __construct() {
-			$this->description = __( 'Enables referrer tracking whenever a new WordPress user account is registered.', 'cp-referrer-and-conversions-tracking' );
+			$this->description = 'Enables referrer tracking whenever a new WordPress user account is registered.';
 
 			if ( ! $this->addon_is_active() ) {
 				return;
