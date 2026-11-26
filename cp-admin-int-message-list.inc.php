@@ -1,248 +1,246 @@
 <?php
-
-
-$this->item = 1; // intval($_GET["cal"]);
-
-$current_user = wp_get_current_user();
-$current_user_access = current_user_can('edit_pages');
-
-$current_page = (isset($_GET["p"]) ? intval($_GET["p"]) : 1);
-if (!$current_page) $current_page = 1;
-$records_per_page = 50;
-
-if ( !is_admin() || !$current_user_access)
-{
-    echo 'Direct access not allowed.';
-    exit;
-}
-
-
-$message = "";
-
-
-if (isset($_GET['delmark']) && $_GET['delmark'] != '')
-{
-    $this->verify_nonce ($_GET["anonce"], 'cpreftrack_actions_booking');
-    for ($i=0; $i<=$records_per_page; $i++)
-    if (isset($_GET['c'.$i]) && $_GET['c'.$i] != '')   
-    {
-        $wpdb->query( 
-                      $wpdb->prepare("DELETE FROM `".$wpdb->prefix.$this->table_messages."` WHERE id=%s", sanitize_text_field($_GET['c'.$i]) ) 
-                    );       
-    }
-    $message = "Marked items deleted";
-}
-else if (isset($_GET['del']) && $_GET['del'] == 'all')
-{    
-    $this->verify_nonce ($_GET["anonce"], 'cpreftrack_actions_booking');
-    $wpdb->query('DELETE FROM `'.$wpdb->prefix.$this->table_messages.'`');                     
-    $message = "All items deleted";
-} 
-else if (isset($_GET['ld']) && $_GET['ld'] != '')
-{
-    $this->verify_nonce ($_GET["anonce"], 'cpreftrack_actions_booking');
-    $wpdb->query( 
-                  $wpdb->prepare('DELETE FROM `'.$wpdb->prefix.$this->table_messages.'` WHERE id=%s', sanitize_text_field($_GET['ld']) ) 
-                );
-    $message = "Item deleted";
-}
-
-
-$rawfrom = (isset($_GET["dfrom"]) ? sanitize_text_field($_GET["dfrom"]) : '');
-$rawto = (isset($_GET["dto"]) ? sanitize_text_field(@$_GET["dto"]) : '');
-//if ($this->get_option('date_format', 'mm/dd/yy') == 'dd/mm/yy')
-//{
-//    $rawfrom = str_replace('/','.',$rawfrom);
-//    $rawto = str_replace('/','.',$rawto);
-//}
-
-$cond = '';
-if (isset($_GET["search"]) && $_GET["search"] != '') 
-{
-    $search_value = sanitize_text_field($_GET["search"]);
-    $cond .= " AND (id like '%".esc_sql($search_value)."%' OR data like '%".esc_sql($search_value)."%' OR referrer LIKE '%".esc_sql($search_value)."%')";
-}
-else 
-    $search_value = '';
-
-if ($rawfrom != '') $cond .= " AND (`time` >= '".esc_sql(date("Y-m-d",strtotime($rawfrom)))."')";
-if ($rawto != '') $cond .= " AND (`time` <= '".esc_sql(date("Y-m-d",strtotime($rawto)))." 23:59:59')";
-
-$events_query = "SELECT * FROM ".$wpdb->prefix.$this->table_messages." WHERE 1=1 ".$cond." ORDER BY `time` DESC";
 /**
- * Allows modify the query of messages, passing the query as parameter
- * returns the new query
+ * Tracking Logs list view.
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+$this->require_manage_access();
+
+global $wpdb;
+
+$this->item       = 1;
+$records_per_page = 50;
+$current_page     = max( 1, absint( $this->get_get_param( 'p', '1' ) ) );
+$search_value     = $this->get_get_param( 'search' );
+$rawfrom          = $this->validate_date( $this->get_get_param( 'dfrom' ) );
+$rawto            = $this->validate_date( $this->get_get_param( 'dto' ) );
+
+$table  = $wpdb->prefix . $this->table_messages;
+$filter = $this->build_logs_where( $search_value, $rawfrom, $rawto );
+
+$count_sql = "SELECT COUNT(*) FROM `{$table}` WHERE {$filter['where']}";
+if ( ! empty( $filter['params'] ) ) {
+	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	$count_sql = $wpdb->prepare( $count_sql, $filter['params'] );
+}
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+$total_items = (int) $wpdb->get_var( $count_sql );
+$total_pages = max( 1, (int) ceil( $total_items / $records_per_page ) );
+if ( $current_page > $total_pages ) {
+	$current_page = $total_pages;
+}
+$offset = ( $current_page - 1 ) * $records_per_page;
+
+$data_params   = $filter['params'];
+$data_params[] = $records_per_page;
+$data_params[] = $offset;
+
+$events_query = $wpdb->prepare(
+	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	"SELECT id, time, referrer, data FROM `{$table}` WHERE {$filter['where']} ORDER BY `time` DESC LIMIT %d OFFSET %d",
+	$data_params
+);
 $events_query = apply_filters( 'cpreftrack_messages_query', $events_query );
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 $events = $wpdb->get_results( $events_query );
-$total_pages = ceil(count($events) / $records_per_page);
 
+$logs_nonce = wp_create_nonce( 'cpreftrack_actions_logs' );
+$csv_nonce  = wp_create_nonce( 'cpreftrack_export_csv' );
 
-if ($message) echo "<div id='setting-error-settings_updated' class='updated'><h2>".esc_html($message)."</h2></div>";
+$csv_url = add_query_arg(
+	array(
+		'page'                 => $this->menu_parameter . '_list',
+		$this->prefix . '_csv' => '1',
+		'_cprt_csv_nonce'      => $csv_nonce,
+		'search'               => $search_value,
+		'dfrom'                => $rawfrom,
+		'dto'                  => $rawto,
+	),
+	admin_url( 'admin.php' )
+);
 
-$nonce = wp_create_nonce( 'cpreftrack_actions_booking' );
-
+$this->render_admin_header(
+	'logs',
+	__( 'Tracking Logs', 'cp-referrer-and-conversions-tracking' ),
+	/* translators: %s: total matching log count */
+	sprintf( __( '%s matching visitor records found.', 'cp-referrer-and-conversions-tracking' ), number_format_i18n( $total_items ) )
+);
 ?>
-<script type="text/javascript">
- function cp_deleteMessageItem(id)
- {
-    if (confirm('Are you sure that you want to delete this item?'))
-    {
-        document.location = 'admin.php?page=<?php echo esc_js($this->menu_parameter); ?>_list&anonce=<?php echo esc_js($nonce); ?>&ld='+id+'&r='+Math.random();
-    }
- }
- function cp_deletemarked()
- {
-    if (confirm('Are you sure that you want to delete the marked items?')) 
-        document.dex_table_form.submit();
- }  
- function cp_deleteall()
- {
-    if (confirm('Are you sure that you want to delete ALL items for this form?'))
-    {        
-        document.location = 'admin.php?page=<?php echo esc_js($this->menu_parameter); ?>_list&del=all&r='+Math.random()+'&anonce=<?php echo esc_js($nonce); ?>';
-    }    
- }
- function cp_markall()
- {
-     var ischecked = document.getElementById("cpcontrolck").checked;
-     <?php for ($i=($current_page-1)*$records_per_page; $i<$current_page*$records_per_page; $i++) if (isset($events[$i])) { ?>
-     document.forms.dex_table_form.c<?php echo intval($i-($current_page-1)*$records_per_page); ?>.checked = ischecked;
-     <?php } ?>
- } 
-</script>
 
-<h1><?php esc_html_e('Tracking Logs','cp-referrer-and-conversions-tracking'); ?></h1>
+<section class="cprt-card cprt-no-print">
+	<div class="cprt-card-body">
+		<form action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" method="get" class="cprt-filter-bar">
+			<input type="hidden" name="page" value="<?php echo esc_attr( $this->menu_parameter ); ?>_list" />
 
-<div class="ahb-buttons-container">
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
-	<div class="clear"></div>
-</div>
+			<div class="cprt-field cprt-field-grow">
+				<label for="cprt-logs-search"><?php esc_html_e( 'Search', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="search" id="cprt-logs-search" name="search" value="<?php echo esc_attr( $search_value ); ?>" placeholder="<?php esc_attr_e( 'Visitor ID / IP, referrer URL, UTM parameter, or entry page...', 'cp-referrer-and-conversions-tracking' ); ?>" />
+			</div>
 
-<div class="ahb-section-container">
-	<div class="ahb-section">
-      <form action="admin.php" method="get">
-        <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_list" />
-		<nobr><label><?php esc_html_e('Search for','cp-referrer-and-conversions-tracking'); ?>:</label> <input type="text" name="search" value="<?php echo esc_attr($search_value); ?>">&nbsp;&nbsp;</nobr>
-		<nobr><label><?php esc_html_e('From','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dfrom" name="dfrom" value="<?php echo esc_attr(@$rawfrom); ?>" >&nbsp;&nbsp;</nobr>
-		<nobr><label><?php esc_html_e('To','cp-referrer-and-conversions-tracking'); ?>:</label> <input autocomplete="off" type="text" id="dto" name="dto" value="<?php echo esc_attr($rawto); ?>" >&nbsp;&nbsp;</nobr>
-       <div style="float:right">
-		<nobr>         
-            <input type="submit" name="ds" value="<?php esc_attr_e('Filter','cp-referrer-and-conversions-tracking'); ?>" class="button-primary button" style="">
-			<input type="submit" name="<?php echo esc_attr($this->prefix); ?>_csv" value="<?php esc_attr_e('Export to CSV','cp-referrer-and-conversions-tracking'); ?>" class="button" style="margin-left:10px;">	
-		</nobr>
-       </div> 
-      </form>
+			<div class="cprt-field">
+				<label for="cprt-logs-from"><?php esc_html_e( 'From', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="date" id="cprt-logs-from" name="dfrom" value="<?php echo esc_attr( $rawfrom ); ?>" />
+			</div>
+
+			<div class="cprt-field">
+				<label for="cprt-logs-to"><?php esc_html_e( 'To', 'cp-referrer-and-conversions-tracking' ); ?></label>
+				<input type="date" id="cprt-logs-to" name="dto" value="<?php echo esc_attr( $rawto ); ?>" />
+			</div>
+
+			<div class="cprt-filter-actions">
+				<button type="submit" class="cprt-btn cprt-btn-primary"><?php esc_html_e( 'Filter', 'cp-referrer-and-conversions-tracking' ); ?></button>
+				<?php if ( '' !== $search_value || '' !== $rawfrom || '' !== $rawto ) : ?>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_list' ) ); ?>" class="cprt-btn cprt-btn-ghost"><?php esc_html_e( 'Reset', 'cp-referrer-and-conversions-tracking' ); ?></a>
+				<?php endif; ?>
+				<a href="<?php echo esc_url( $csv_url ); ?>" class="cprt-btn cprt-btn-secondary"><?php esc_html_e( 'Export CSV', 'cp-referrer-and-conversions-tracking' ); ?></a>
+			</div>
+		</form>
 	</div>
-</div>
+</section>
 
+<section class="cprt-card">
+	<div class="cprt-table-toolbar cprt-no-print">
+		<div class="cprt-btn-group">
+			<button type="button" class="cprt-btn cprt-btn-danger-outline" data-cprt-bulk-delete="cprt-logs-bulk-form">
+				<?php esc_html_e( 'Delete Selected', 'cp-referrer-and-conversions-tracking' ); ?>
+			</button>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_list' ) ); ?>" class="cprt-inline-form" data-cprt-confirm="deleteAll">
+				<input type="hidden" name="anonce" value="<?php echo esc_attr( $logs_nonce ); ?>" />
+				<input type="hidden" name="cpreftrack_logs_action" value="delete_all" />
+				<button type="submit" class="cprt-btn cprt-btn-ghost-danger">
+					<?php esc_html_e( 'Delete All Logs', 'cp-referrer-and-conversions-tracking' ); ?>
+				</button>
+			</form>
+		</div>
+		<button type="button" class="cprt-btn cprt-btn-secondary" data-cprt-print>
+			<?php esc_html_e( 'Print', 'cp-referrer-and-conversions-tracking' ); ?>
+		</button>
+	</div>
+
+	<form id="cprt-logs-bulk-form" method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_list' ) ); ?>">
+		<input type="hidden" name="anonce" value="<?php echo esc_attr( $logs_nonce ); ?>" />
+		<input type="hidden" name="cpreftrack_logs_action" value="delete_marked" />
+
+		<div class="cprt-table-wrap">
+			<table class="cprt-table">
+				<thead>
+					<tr>
+						<th class="cprt-col-check cprt-no-print">
+							<input type="checkbox" data-cprt-select-all aria-label="<?php esc_attr_e( 'Select all rows', 'cp-referrer-and-conversions-tracking' ); ?>" />
+						</th>
+						<th><?php esc_html_e( 'Visitor ID / IP', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'Timestamp', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'Referrer', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'UTM Parameters', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th><?php esc_html_e( 'Entry Page', 'cp-referrer-and-conversions-tracking' ); ?></th>
+						<th class="cprt-col-actions cprt-no-print"><?php esc_html_e( 'Actions', 'cp-referrer-and-conversions-tracking' ); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<?php if ( empty( $events ) ) : ?>
+						<tr>
+							<td colspan="7" class="cprt-empty-state">
+								<?php esc_html_e( 'No tracking logs found for the current filters.', 'cp-referrer-and-conversions-tracking' ); ?>
+							</td>
+						</tr>
+					<?php else : ?>
+						<?php foreach ( $events as $row ) : ?>
+							<?php
+							$data       = $this->decode_log_data( $row->data );
+							$raw_entry  = isset( $data['entry'] ) ? (string) $data['entry'] : '';
+							$utm_params = isset( $data['utm'] ) ? $this->sanitize_utm_params( $data['utm'] ) : array();
+							$utm_html   = $this->render_utm_badges_html( $utm_params, 'first' );
+							$entry_url  = $this->format_entry_url( $raw_entry );
+							$entry_lbl  = ( strlen( $raw_entry ) > 55 ) ? '...' . substr( $raw_entry, -52 ) : $raw_entry;
+							$is_ref_url = (bool) preg_match( '#^https?://#i', (string) $row->referrer );
+							?>
+							<tr>
+								<td class="cprt-col-check cprt-no-print">
+									<input type="checkbox" name="selected_ids[]" value="<?php echo esc_attr( $row->id ); ?>" class="cprt-row-checkbox" />
+								</td>
+								<td><code class="cprt-mono-pill"><?php echo esc_html( $row->id ); ?></code></td>
+								<td class="cprt-nowrap"><?php echo esc_html( $row->time ); ?></td>
+								<td class="cprt-break-word">
+									<?php if ( $is_ref_url ) : ?>
+										<a href="<?php echo esc_url( $row->referrer ); ?>" target="_blank" rel="noopener noreferrer" class="cprt-link">
+											<?php echo esc_html( $row->referrer ); ?>
+										</a>
+									<?php else : ?>
+										<span class="cprt-badge cprt-badge-blue"><?php echo esc_html( $row->referrer ); ?></span>
+									<?php endif; ?>
+								</td>
+								<td class="cprt-break-word">
+									<?php if ( '' !== $utm_html ) : ?>
+										<?php echo wp_kses_post( $utm_html ); ?>
+									<?php else : ?>
+										<span class="cprt-text-muted">&mdash;</span>
+									<?php endif; ?>
+								</td>
+								<td class="cprt-break-word">
+									<?php if ( '' !== $entry_url ) : ?>
+										<a href="<?php echo esc_url( $entry_url ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $raw_entry ); ?>" class="cprt-link">
+											<?php echo esc_html( $entry_lbl ); ?>
+										</a>
+									<?php elseif ( '' !== $raw_entry ) : ?>
+										<span><?php echo esc_html( $entry_lbl ); ?></span>
+									<?php else : ?>
+										<span class="cprt-text-muted">&mdash;</span>
+									<?php endif; ?>
+								</td>
+								<td class="cprt-col-actions cprt-no-print">
+									<button type="button"
+											class="cprt-btn cprt-btn-sm cprt-btn-ghost-danger"
+											data-cprt-delete-one="<?php echo esc_attr( $row->id ); ?>"
+											data-cprt-target-form="cprt-logs-single-delete-form">
+										<?php esc_html_e( 'Delete', 'cp-referrer-and-conversions-tracking' ); ?>
+									</button>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</tbody>
+			</table>
+		</div>
+	</form>
+
+	<?php if ( $total_pages > 1 ) : ?>
+		<div class="cprt-pagination cprt-no-print">
+			<?php
+			echo wp_kses_post(
+				paginate_links(
+					array(
+						'base'      => add_query_arg(
+							array(
+								'page'   => $this->menu_parameter . '_list',
+								'dfrom'  => $rawfrom,
+								'dto'    => $rawto,
+								'search' => $search_value,
+								'p'      => '%#%',
+							),
+							admin_url( 'admin.php' )
+						),
+						'format'    => '',
+						'total'     => $total_pages,
+						'current'   => $current_page,
+						'prev_text' => '&laquo; ' . esc_html__( 'Previous', 'cp-referrer-and-conversions-tracking' ),
+						'next_text' => esc_html__( 'Next', 'cp-referrer-and-conversions-tracking' ) . ' &raquo;',
+						'type'      => 'list',
+					)
+				)
+			);
+			?>
+		</div>
+	<?php endif; ?>
+</section>
+
+<form id="cprt-logs-single-delete-form" method="post" action="<?php echo esc_url( admin_url( 'admin.php?page=' . $this->menu_parameter . '_list' ) ); ?>" class="cprt-hidden">
+	<input type="hidden" name="anonce" value="<?php echo esc_attr( $logs_nonce ); ?>" />
+	<input type="hidden" name="cpreftrack_logs_action" value="delete_one" />
+	<input type="hidden" name="item_id" value="" />
+</form>
 
 <?php
-
-
-echo paginate_links(  array(
-    'base'         => 'admin.php?page='.$this->menu_parameter.'_list&%_%&dfrom='.urlencode($rawfrom).'&dto='.urlencode($rawto).'&search='.urlencode($search_value),
-    'format'       => '&p=%#%',
-    'total'        => $total_pages,
-    'current'      => $current_page,
-    'show_all'     => False,
-    'end_size'     => 1,
-    'mid_size'     => 2,
-    'prev_next'    => True,
-    'prev_text'    => __('&laquo; Previous','cp-referrer-and-conversions-tracking'),
-    'next_text'    => __('Next &raquo;','cp-referrer-and-conversions-tracking'),
-    'type'         => 'plain',
-    'add_args'     => False
-    ) );
-
-?>
-
-<div id="dex_printable_contents" style="overflow:visible !important;"> 
-<form name="dex_table_form" id="dex_table_form" action="admin.php" method="get">
- <input type="hidden" name="page" value="<?php echo esc_attr($this->menu_parameter); ?>_list" />
- <input type="hidden" name="delmark" value="1" />
- <input type="hidden" name="anonce" value="<?php echo esc_attr($nonce); ?>" />
-<div class="ahb-orderssection-container" style="background:#f6f6f6;padding-bottom:20px;">
-<table border="0" style="width:100%;" class="ahb-orders-list" cellpadding="10" cellspacing="10">
-	<thead>
-	<tr>
-      <th width="10"><input type="checkbox" name="cpcontrolck" id="cpcontrolck" value="" onclick="cp_markall();"></th>
-      <th width="30"><?php esc_html_e('IP','cp-referrer-and-conversions-tracking'); ?></th>
-	  <th style="text-align:left" width="130"><?php esc_html_e('Time','cp-referrer-and-conversions-tracking'); ?></th>
-	  <th style="text-align:left"><?php esc_html_e('Referrer','cp-referrer-and-conversions-tracking'); ?></th>
-      <th style="text-align:left"><?php esc_html_e('Entry page','cp-referrer-and-conversions-tracking'); ?></th>
-	  <th  class="cpnopr"><?php esc_html_e('Options','cp-referrer-and-conversions-tracking'); ?></th>
-	</tr>
-	</thead>
-	<tbody id="the-list">
-    <?php for ($i=($current_page-1)*$records_per_page; $i<$current_page*$records_per_page; $i++) if (isset($events[$i])) { ?>  
-	  <tr class='<?php if (($i%2)) { ?>alternate <?php } ?>author-self status-draft format-default iedit' valign="top">
-        <th><input type="checkbox" name="c<?php echo intval($i-($current_page-1)*$records_per_page); ?>" value="<?php echo esc_attr($events[$i]->id); ?>" /></th>
-        <th><?php echo esc_html($events[$i]->id); ?></th>
-		<td><?php echo esc_html($events[$i]->time); ?></td>
-		<td><?php echo esc_html($events[$i]->referrer); ?></td>		
-        <td><?php 
-              $data = unserialize($events[$i]->data);
-              $entry = $data["entry"];
-              if (strlen($entry) > 53)
-                  $entry = "...".substr($entry, strlen($entry) -50);
-              if ($entry != '')
-                  echo '<a href="'.esc_attr($data["entry"]).'" target="_blank" title="'.esc_attr($data["entry"]).'">'.esc_html($entry).'</a>'; 
-          ?></td>		
-		<td class="cpnopr" style="text-align:center;">        
-		  <input class="button" type="button" name="caldelete_<?php echo esc_attr($events[$i]->id); ?>" value="Delete" onclick="cp_deleteMessageItem('<?php echo esc_js($events[$i]->id); ?>');" />
-		</td>
-      </tr>
-    <?php } ?> 
-	</tbody>
-</table>
-</div>
-</form>
-</div>
-
-<div class="ahb-buttons-container">
-    <input type="button" value="Print" class="button button-primary" onclick="do_dexapp_print();" />
-	<a href="<?php print esc_attr(admin_url('admin.php?page='.$this->menu_parameter));?>" class="ahb-return-link">&larr;<?php esc_html_e('Return to the main settings page','cp-referrer-and-conversions-tracking'); ?></a>
-	<div class="clear"></div>
-</div>
-
-<div style="clear:both"></div>
-<p class="submit" style="float:left;"><input class="button" type="button" name="pbutton" value="Delete marked items" onclick="cp_deletemarked();" /> &nbsp; &nbsp; &nbsp; </p>
-<p class="submit" style="float:left;"><input class="button" type="button" name="pbutton" value="Delete All items" onclick="cp_deleteall();" /></p>
-<div style="clear:both"></div>
-
-
-<script type="text/javascript">
- function do_dexapp_print()
- {
-      w=window.open();
-      w.document.write("<style>.cpnopr{display:none;};table{border:2px solid black;width:100%;}th{border-bottom:2px solid black;text-align:left}td{padding-left:10px;border-bottom:1px solid black;}</style>"+document.getElementById('dex_printable_contents').innerHTML);
-      w.print();
-      w.close();
- }
-
- var $j = jQuery.noConflict();
- $j(function() {
- 	$j("#dfrom").datepicker({
-                    dateFormat: 'yy-mm-dd'
-                 });
- 	$j("#dto").datepicker({
-                    dateFormat: 'yy-mm-dd'
-                 });
- });
-
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+$this->render_admin_footer();

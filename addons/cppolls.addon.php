@@ -1,135 +1,112 @@
 <?php
-/*
-    iCal Import Addon
-*/
-require_once dirname( __FILE__ ).'/base.addon.php';
+/**
+ * CP Polls Conversion Tracking Add-On.
+ */
 
-if( !class_exists( 'CPREFTRACK_CPPollsForm' ) )
-{
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
-    class CPREFTRACK_CPPollsForm extends CPREFTRACK_BaseAddon
-    {
+require_once __DIR__ . '/base.addon.php';
 
-        /************* ADDON SYSTEM - ATTRIBUTES AND METHODS *************/
-		protected $addonID = "addon-CPPollsForm-20200119";
-		protected $name = "CP Polls Conversion Tracking";
-		protected $description;
-        protected $conversion_submission_indicator = 'CP Polls - Form submission';
-        protected $conversion_details_prefix = 'Submission ID #';
+if ( ! class_exists( 'CPREFTRACK_CPPollsForm' ) ) {
 
+	class CPREFTRACK_CPPollsForm extends CPREFTRACK_BaseAddon {
 
-		/************************ ADDON CODE *****************************/
+		protected $addonID                         = 'addon-CPPollsForm-20200119';
+		protected $name                            = 'CP Polls Conversion Tracking';
+		protected $conversion_submission_indicator = 'CP Polls - Form submission';
+		protected $conversion_details_prefix       = 'Submission ID #';
 
-        /************************ ATTRIBUTES *****************************/
+		public function __construct() {
+			$this->description = sprintf(
+				/* translators: %s: companion plugin link */
+				'Enables referrer tracking for conversions in the %s plugin.',
+				$this->build_plugin_info_link( 'cp-polls', 'CP Polls' )
+			);
 
+			add_action( 'init', array( $this, 'check_active' ), 10 );
 
-        /************************ CONSTRUCT *****************************/
+			if ( ! $this->addon_is_active() ) {
+				return;
+			}
 
-        function __construct()
-        {
-			$this->description = __("The add-on enables referrer tracking for conversions in the <a style=\"font-weight:bold\" href=\"plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;\">CP Polls</a> plugin", 'cp-referrer-and-conversions-tracking' );
-            // Check if the plugin is active
-            
-            add_action( 'init', array( &$this, 'check_active' ), 10, 1 );
+			add_action( 'cppolls_process_data_before_insert', array( $this, 'register_referrer' ), 10, 1 );
+			add_action( 'cppolls_process_data', array( $this, 'track_conversion_submission' ), 10, 1 );
+			add_filter( $this->conversion_submission_indicator, array( $this, 'filter_conversion_list' ), 10, 1 );
+		}
 
-			if( !$this->addon_is_active() ) return;
+		public function get_status() {
+			global $cp_pollsnv_plugin;
+			if ( is_object( $cp_pollsnv_plugin ) ) {
+				return 'active';
+			}
+			return $this->is_plugin_installed( 'cp-polls/cp-polls.php' ) ? 'inactive' : 'not_installed';
+		}
 
-			add_action( 'cppolls_process_data_before_insert', array( &$this, 'register_referrer' ), 10, 1 );
+		public function check_active() {
+			global $cp_pollsnv_plugin;
+			$this->maybe_auto_activate( is_object( $cp_pollsnv_plugin ) );
+		}
 
-            add_action( 'cppolls_process_data', array( &$this, 'track_conversion_submission' ), 10, 1 );
+		public function get_addon_settings() {
+			global $cp_pollsnv_plugin;
+			return $this->render_dependency_notice(
+				is_object( $cp_pollsnv_plugin ),
+				'CP Polls',
+				'cp-polls',
+				'cp-polls/cp-polls.php'
+			);
+		}
 
-            add_filter( $this->conversion_submission_indicator, array( &$this, 'filter_conversion_list' ), 10, 1 );
+		public function register_referrer( &$params ) {
+			if ( ! is_array( $params ) ) {
+				return;
+			}
+			$params['referrer_url']        = apply_filters( 'cpreftrack_referrer', '' );
+			$params['referrer_url_latest'] = $this->get_latest_referrer_cookie();
+		}
 
-            // filter en post
+		public function track_conversion_submission( $params ) {
+			$itemnumber = ( is_array( $params ) && isset( $params['itemnumber'] ) ) ? sanitize_text_field( (string) $params['itemnumber'] ) : '';
+			do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix . $itemnumber );
+		}
 
+		public function filter_conversion_list( $param_registered ) {
+			global $wpdb, $cp_pollsnv_plugin;
+			if ( ! is_object( $cp_pollsnv_plugin ) || empty( $cp_pollsnv_plugin->table_messages ) ) {
+				return esc_html( (string) $param_registered );
+			}
 
-        } // End __construct
+			$inum   = absint( str_replace( $this->conversion_details_prefix, '', (string) $param_registered ) );
+			$table  = $wpdb->prefix . $cp_pollsnv_plugin->table_messages;
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$myrows = $wpdb->get_results( $wpdb->prepare( "SELECT formid FROM `{$table}` WHERE id = %d LIMIT 1", $inum ) );
 
+			if ( ! empty( $myrows ) ) {
+				$url = add_query_arg(
+					array(
+						'page'   => 'CP_Polls',
+						'cal'    => absint( $myrows[0]->formid ),
+						'list'   => '1',
+						'search' => $inum,
+						'ds'     => 'Filter',
+					),
+					admin_url( 'admin.php' )
+				);
 
+				return sprintf(
+					'<a href="%1$s" class="cprt-link cprt-nowrap">%2$s</a>',
+					esc_url( $url ),
+					esc_html( (string) $param_registered )
+				);
+			}
 
-        /************************ PRIVATE METHODS *****************************/
+			return esc_html( (string) $param_registered );
+		}
+	}
 
-
-
-
-
-		/************************ PUBLIC METHODS  *****************************/
-
-
-        public function check_active()
-        {
-            global $cp_pollsnv_plugin;
-            if (is_object($cp_pollsnv_plugin) && !$this->addon_is_active())
-            {
-                global $cpreftrack_addons_active_list;
-                $cpreftrack_addons_active_list[] = $this->get_addon_id();
-                update_option( 'cpreftrack_addons_active_list', $cpreftrack_addons_active_list );
-            }
-        }
-        
-        
-		public function register_referrer(&$params)
-		{
-            $referrer = apply_filters( 'cpreftrack_referrer', '' );
-            $params["referrer_url"] = $referrer;
-            $params["referrer_url_latest"] = sanitize_text_field($_COOKIE['cprreftracklatest']);
-        }
-
-
-        public function get_addon_settings()
-        {
-            global $cp_pollsnv_plugin;
-            if (!is_object($cp_pollsnv_plugin))
-            {
-                if(!file_exists(dirname(__FILE__).'/../../cp-polls/cp-polls.php'))
-                {
-?>
-            <div class="card h-100" style="background-color: #ffdddd">
-                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin has not been detected. Please remember to install the related plugin to get listed its conversions.</div>
-
-                <input class="button mt-2" type="button" name="calreport_<?php echo intval($item->id); ?>" value="<?php esc_attr_e('Install CP Polls plugin','cp-referrer-and-conversions-tracking'); ?>" onclick="document.location='plugin-install.php?tab=plugin-information&amp;plugin=cp-polls&amp;';" />
-            </div>
-<?php
-                }
-                else
-                {
-?>
-            <div class="card h-100" style="background-color: #ffdddd">
-                <div class="mt-2"><strong><span style="color:red">Configuration issue:</span></strong> The <strong><?php echo esc_html($this->name); ?></strong> add-on has been enabled but the related plugin is not active. Please remember to <a href="plugins.php">activate the related plugin</a> to get listed its conversions.</div>
-            </div>
-<?php
-                }
-            }
-        }
-
-		public function track_conversion_submission($params)
-		{
-            do_action( 'cpreftrack_register_conversion', $this->conversion_submission_indicator, $this->conversion_details_prefix.$params["itemnumber"]);
-        }
-
-
-		public function filter_conversion_list($param_registered)
-		{
-            global $wpdb, $cp_pollsnv_plugin;
-            if (!is_object($cp_pollsnv_plugin))
-                return $param_registered;
-            $inum = intval(str_replace($this->conversion_details_prefix,'',$param_registered));
-            $myrows = $wpdb->get_results( $wpdb->prepare("SELECT * FROM ".$wpdb->prefix.$cp_pollsnv_plugin->table_messages." WHERE id=%d",$inum) );
-            if (count($myrows))
-            {
-                $param_registered = "<a href=\"?page=CP_Polls&cal=".$myrows[0]->formid."&list=1&search=".urlencode($inum)."&dfrom&dto&ds=Filter\"><nobr>".$param_registered."</nobr></a>";
-            }
-
-            return $param_registered;
-        }
-
-
-    } // End Class
-
-    // Main add-on code
-    $CPPollsForm_obj = new CPREFTRACK_CPPollsForm();
-
-	// Add addon object to the objects list
+	$CPPollsForm_obj = new CPREFTRACK_CPPollsForm();
 	global $cpreftrack_addons_objs_list;
 	$cpreftrack_addons_objs_list[ $CPPollsForm_obj->get_addon_id() ] = $CPPollsForm_obj;
 }
